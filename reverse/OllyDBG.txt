@@ -1,0 +1,77 @@
+调试
+	F9		运行程序
+	CTRL+F9		运行到返回
+	alt+F9		运行到用户代码
+	
+	F7		步进（call时进入）
+	CTRL+F7		自动步进
+	F8		步过（call时不进入）
+	CTRL+F8		自动步过
+
+	F12		暂停
+
+	CTRL+F2		重新运行
+	alt+F2		结束
+
+	F4			运行到选区
+
+	CTRL+G		goto命令
+
+
+断点
+	F2		断点切换
+	shift+F2	条件断点
+	alt+B	BreakPoints对话框
+
+
+命令行
+	bp printf	在printf函数开头设断点
+	dd ebp + 4	计算 | 查看地址的值
+
+
+其他
+	space		修改汇编语句（爆破）
+	；或 双击		添加注释
+	：			设置标签
+	*			显示当前EIP位置
+	-			显示上一个光标的位置
+	CTRL+E		编辑
+
+
+
+
+
+
+查找main函数：
+	代码执行法（代码量小，功能明确）
+	字符串检索（右键 -> search for -> all referenced text string）
+	API检索法（右键 -> search for -> all intermodular calls）	（内存查看器 Memory Map）
+
+
+
+
+
+
+EAX		累加器
+EBX		基址寄存器
+ECX		计数器
+EDX		数据寄存器
+
+EBP		扩展基址指针寄存器
+ESI		源变址寄存器
+EDI		目的变址寄存器
+ESP		栈指针寄存器
+
+
+
+
+
+
+打补丁：dump窗口选中修改部分 右键 -> copy to executable file -> 新窗口右键 -> Save file
+
+
+
+
+
+
+	

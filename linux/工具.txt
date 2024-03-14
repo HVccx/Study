@@ -1,0 +1,311 @@
+kali
+	1.msfconsole命令  启动metasploit
+
+		metasploit渗透工具（远程控制 命令执行 摄像头监控 密码获取 创建后门用户 破坏篡改信息）
+	
+	使用法则：搜索模块	> search 模块
+
+		 使用模块	> use 模块编号/模块名称
+
+		 配置模块必选项	> show options	（显示配置项）
+				> set option名称  内容
+
+		 运行模块	> run
+				> exploit
+
+
+
+
+
+
+
+	2.nmap命令	（扫描主机）	例：nmap -sS -A -p- -sV -T4 192.168.184.200		若靶机位于公网，只能通过  -sP  来扫描，信息返回较少
+
+
+ -A   　　　　！！　　　　:全面扫描. 综合扫描. 是一种完整扫描目标信息的扫描方式.   
+ --exclude　　　　　 : 排除指定的地址  例: nmap  192.168.1.0/24  --exclude 192.168.1.1 那么就不会对192.168.1.1进行扫描,
+--excludefile 　　　　: 排除指定的地址列表  例: nmap  192.168.1.0/24  --excludefile list.txt 那么就不会对list.txt里面的地址进行扫描,
+-iL　　　　　　　　  : 扫描一个列表文件  例  nmap  -iL  list.txt
+-sP　　　　　  ！！　　: Ping扫描,效率高,返回信息少.  　　例: nmap -sP 192.168.1.110 
+-P0(Pn)　　　　　　:无Ping扫描,可以躲避防火墙防护,可以在目标主机禁止ping的情况下使用
+-PS　　　　　　　　:TCP SYN Ping扫描
+-PA　　　　　　　　:TCP ACK Ping扫描
+-PR　　　　　　　　: ARP Ping扫描
+-n　　　　　　　　  : 禁止DNS反向解析
+-T　　　　　　！！　　  : 时序选项, -TO-T5. 用于IDS逃逸,0=>非常慢,1=>缓慢的,2=>文雅的,3=>普通的,4=>快速的,5=>急速的
+-p　　　　　　　　   : 指定端口扫描
+-F　　　　　　　　   : 快速扫描
+-f　　　　　　　　　 : 报文分段
+-D　　　　　　　　　: ip地址欺骗  例 nmap -D RND:5 192.168.1.110  RND:为生成随机ip地址　　
+-sS　　　　　！！　　　 : TCP SYN 扫描,速度快, 1秒1000次左右. 较为隐蔽.
+-sT　　　　　　　　 : TCP连接扫描
+-sU　　　　　　　　: UDP扫描,扫描非常慢,容易被忽视
+-sN,-sF　　　　　　 : 隐蔽扫描
+-sI　　　　　　　　  : 空闲扫描,允许端口完全欺骗,可以允许不使用自身ip的情况下发起扫描,非常之隐蔽的扫描.但得先寻找空闲主机,指令为 nmap -p80 -open -script ipidseq 192.168......,第二种是往事随机寻找, nmap -p80 -open -script  ipidseq -iR 2000 (iR选项代表随机选择目标.2000带表选择的数量,-open代表只选择端口开放的空闲主机)
+-p-　　　　　！！　　　 : 扫描所有端口  1-65535
+-top-ports　　　　　  : 只扫描开发概率最高的端口 后面跟上数值  例  nmap -top-ports  100 , 就是扫描概率最高的前100个端口
+<版本探测相关>:
+-sV　　　　　！！　　　  : 版本探测 ,通过相应的端口探测对应的服务,根据服务的指纹识别出相应的版本.
+-sV --allports　　　　 : 只有使用--allports才能扫描所有的端口,默认情况下回跳过如 TCP9100端口(hp打印机专用端口)
+--version-intersity　　 : 设置扫描强度 0-9 ,数值越大越有可能被识别,花费时间越多,默认是7
+--version-ligth　　　　: 扫描强度,轻量级扫描(2) ,等用于--version-intersity 2
+--version-all　　　　   :扫描强度,重量级扫描(9)  ,等同于--version-intersity 9
+--version-trace　　　  : 获取详细的版本信息
+-sR　　　　　　　　  : 判断开放端口是否为RPC端口, 如果是返回程序和版本号.
+ --resaon　　　　　  : 显示主机存活原因
+
+
+
+
+
+
+
+	3.arp-scan	(内网扫描，速度快)	例：arp-scan --interface=eth0 --localnet （缩写：arp-scan -I eth0 -l）		arp-scan -I eth0 IP/网段
+
+
+-f	从指定文件中读取主机名或地址	arp-scan -f ip.txt
+-l	从网络接口配置生成地址		arp-scan -l
+-i	各扫描之间的时间差		arp-scan -l -i 1000
+-r	每个主机扫描次数			arp-scan -l -r 5
+-V	显示程序版本并退出		arp-scan -l -V
+-t	设置主机超时时间			arp-scan -t 1000 192.168.75.0/24
+-L	使用网络接口			arp-scan -L eth0
+-g	不显示重复的数据			arp-scan -l -g
+-D	显示数据包往返时间		arp-scan -l -D
+
+--interface/-I		网卡接口
+--localnet/-l		局域网内网络
+
+
+
+
+
+	4.netdiscover	(内网扫描)	例：netdiscover -i eth0 -r 192.168.184.0/24
+
+
+  -i device: your network device
+  -r range: scan a given range instead of auto scan. 192.168.6.0/24,/16,/8
+  -l file: scan the list of ranges contained into the given file
+  -p passive mode: do not send anything, only sniff
+  -m file: scan a list of known MACs and host names
+  -F filter: customize pcap filter expression (default: "arp")
+  -s time: time to sleep between each ARP request (milliseconds)
+  -c count: number of times to send each ARP request (for nets with packet loss)
+  -n node: last source IP octet used for scanning (from 2 to 253)
+  -d ignore home config files for autoscan and fast mode
+  -f enable fastmode scan, saves a lot of time, recommended for auto
+  -P print results in a format suitable for parsing by another program and stop after active scan
+  -L similar to -P but continue listening after the active scan is completed
+  -N Do not print header. Only valid when -P or -L is enabled.
+  -S enable sleep time suppression between each request (hardcore mode)
+
+
+
+
+
+
+
+	5.nc		例：nc -lvp 1234	(监听1234端口)		nc 192.168.184.200 1234	(连接目标机的1234端口)	(TCP连接)
+
+		nc [-hlnruz][-g<网关...>][-G<指向器数目>][-i<延迟秒数>][-o<输出文件>][-p<通信端口>][-s<来源位址>][-v...][-w<超时秒数>][主机名称][通信端口...]
+
+-g<网关> 设置路由器跃程通信网关，最多可设置8个。
+-G<指向器数目> 设置来源路由指向器，其数值为4的倍数。
+-h 在线帮助。
+-i<延迟秒数> 设置时间间隔，以便传送信息及扫描通信端口。
+-l 使用监听模式，管控传入的资料。
+-n 直接使用IP地址，而不通过域名服务器。
+-o<输出文件> 指定文件名称，把往来传输的数据以16进制字码倾倒成该文件保存。
+-p<通信端口> 设置本地主机使用的通信端口。
+-r 乱数指定本地与远端主机的通信端口。
+-s<来源位址> 设置本地主机送出数据包的IP地址。
+-u 使用UDP传输协议。
+-v 显示指令执行过程。
+-w<超时秒数> 设置等待连线的时间。
+-z 使用0输入/输出模式，只在扫描通信端口时使用。
+
+        -c shell commands       as `-e'; use /bin/sh to exec [dangerous!!]
+        -e filename             program to exec after connect [dangerous!!]
+        -b                      allow broadcasts
+        -g gateway              source-routing hop point[s], up to 8
+        -G num                  source-routing pointer: 4, 8, 12, ...
+        -h                      this cruft
+        -i secs                 delay interval for lines sent, ports scanned
+        -k                      set keepalive option on socket
+        -l                      listen mode, for inbound connects
+        -n                      numeric-only IP addresses, no DNS
+        -o file                 hex dump of traffic
+        -p port                 local port number
+        -r                      randomize local and remote ports
+        -q secs                 quit after EOF on stdin and delay of secs
+        -s addr                 local source address
+        -T tos                  set Type Of Service
+        -t                      answer TELNET negotiation
+        -u                      UDP mode
+        -v                      verbose [use twice to be more verbose]
+        -w secs                 timeout for connects and final net reads
+        -C                      Send CRLF as line-ending
+        -z                      zero-I/O mode [used for scanning]
+
+
+
+
+
+
+	6.talnet
+
+		telnet [-8acdEfFKLrx][-b<主机别名>][-e<脱离字符>][-k<域名>][-l<用户名称>][-n<记录文件>][-S<服务类型>][-X<认证形态>][主机名称或IP地址<通信端口>]
+
+-8 允许使用8位字符资料，包括输入与输出。
+-a 尝试自动登入远端系统。
+-b<主机别名> 使用别名指定远端主机名称。
+-c 不读取用户专属目录里的.telnetrc文件。
+-d 启动排错模式。
+-e<脱离字符> 设置脱离字符。
+-E 滤除脱离字符。
+-f 此参数的效果和指定"-F"参数相同。
+-F 使用Kerberos V5认证时，加上此参数可把本地主机的认证数据上传到远端主机。
+-k<域名> 使用Kerberos认证时，加上此参数让远端主机采用指定的领域名，而非该主机的域名。
+-K 不自动登入远端主机。
+-l<用户名称> 指定要登入远端主机的用户名称。
+-L 允许输出8位字符资料。
+-n<记录文件> 指定文件记录相关信息。
+-r 使用类似rlogin指令的用户界面。
+-S<服务类型> 设置telnet连线所需的IP TOS信息。
+-x 假设主机有支持数据加密的功能，就使用它。
+-X<认证形态> 关闭指定的认证形态。
+
+
+
+
+
+
+
+
+
+	7.knock		(端口碰撞，相当于端口的门锁)
+
+knock 192.168.184.200 1 2 3 -v
+knock -p 1337 192.168.184.200
+
+端口敲门服务的自定义序列号，一般配置在它的配置文件中，配置文件的路径默认是
+/etc/knockd.conf
+
+
+
+
+
+
+
+
+	8.sudo		允许授予普通用户临时获取root权限的权利	(运行/bin/sh可以提权)
+
+一个用户拥有vim命令的root权限		sudo /usr/bin/vim -c ':!/bin/sh'	(提权)
+
+sudo -l		(查看该用户有什么root权限)
+
+s权限		文件在被设置了 s 权限后，文件在执行阶段便具有文件所有者的权限
+
+
+
+
+
+
+	9.sqlmap
+
+sqlmap -r upload.txt
+sqlmap -r upload.txt --dbs
+sqlmap -r upload.txt -D [] --table
+sqlmap -r upload.txt -D [] -T [] --colunm
+sqlmap -r upload.txt -D [] -T [] -C [] --dump
+
+
+
+
+
+
+
+	10.hydra	(九头鸟，密码爆破工具)	（要user.txt pass.txt）
+
+hydra -L user.txt -P pass.txt ssh://192.168.184.200		(爆破ssh)
+
+
+
+
+
+
+
+
+
+	11.openssl	(加密、解密、签名、验证、生成证书)
+
+openssl passwd -1 -salt ssss 123456	->	$1$ssss$O5ne.Rsp1HVnXUB3EChbr0	('1'为加密方式，'ssss'为 salt 增加加密复杂性，'O5ne.Rsp1HVnXUB3EChbr0'为加密后的密码)
+	（/etc/passwd 里 root:x:0:0:root:/root:/usr/bin/zsh 的 x 就相当于 $1$ssss$O5ne.Rsp1HVnXUB3EChbr0 ，为了方便查看，这部分在/etc/shadow里面）
+
+
+
+
+
+
+	11.gobuster	（扫描爆库）
+
+gobuster dir -u http://192.168.184.132:7331/ -w directory-list-2.3-medium.txt -x .php,.txt,.html,.zip
+
+
+
+
+
+
+	12.dirb		(扫描爆库)
+
+dirb http://192.168.184.133/ /usr/share/dirb/wordlists/common.txt
+
+
+
+
+
+
+
+
+	13.john		（密码破解）
+
+john ./hash.txt --wordlist /usr/share/john/password.lst		(hash.txt存放密文)
+
+
+
+
+
+
+
+
+	14.steghide	(图像和音频文件中隐藏数据，图片隐写)
+
+嵌入数据
+	steghide embed -cf image.jpg -ef secret.txt
+
+提权数据
+	steghide extract -sf image.jpg
+
+
+
+
+
+
+
+	15.wpscan	(漏洞数据库，密码破解，指纹识别，报告生成)
+
+wpscan --url http://wordy/ -e		（查找目标上的所有用户）
+
+wpscan --url http://wordy/ -U user.txt -P pass.txt	(爆破)
+
+
+
+
+
+
+	16.searchsploit	(搜索和浏览已知漏洞的命令行工具，关键词：漏洞名称、CVE 编号、操作系统)
+
+searchsploit Activity monitor
+
+
+

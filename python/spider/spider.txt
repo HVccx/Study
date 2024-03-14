@@ -1,0 +1,31 @@
+import requests
+
+    发送 GET 请求
+    response = requests.get('https://api.example.com/data')
+    print(response.text)
+
+    发送 POST 请求
+    data = {'key': 'value'}
+    response = requests.post('https://api.example.com/post', data=data)
+    print(response.text)
+
+    发送带有参数的请求
+    params = {'param1': 'value1', 'param2': 'value2'}
+    response = requests.get('https://api.example.com/data', params=params)
+    print(response.text)
+
+    设置请求头
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+    response = requests.get('https://api.example.com/data', headers=headers)
+    print(response.text)
+
+    处理响应
+    response = requests.get('https://api.example.com/data')
+    if response.status_code == 200:
+        print('Request successful')
+        print(response.text)
+    else:
+        print('Request failed with status code:', response.status_code)
+
+    登录
+    r = requests.get('https://api.github.com/user', auth=('user', 'pass'))

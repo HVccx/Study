@@ -1,0 +1,53 @@
+		python语句												！！！ 不止/bin/sh可以获得shell，只有sh也可以获得shell
+r.recv()
+r.recvuntil('Ciphertext\n\n')
+r.recvline()								# 只接收到'\n'
+r.sendline(payload)
+r.sendlineafter('teat\n',payload)
+puts=u64(r.recvuntil(b'\x7f')[-6:].ljust(0x8,b'\x00'))			# u64(r.recv(6).ljust(0x8,b'\x00'))
+
+
+
+
+		ROPgadget工具								# 可能会出错！！！
+apt install python3-ropgadget（安装）
+
+ROPgadget --binary ret2syscall --only 'pop|ret' | grep 'eax'		# 查找 pop eax ; ret
+
+ROPgadget --binary ret2syscall --only 'pop|ret' | grep 'ebx'		# 查找 pop ebx ; ... ; ret
+
+ROPgadget --binary ret2syscall --only 'int'				# 查找 int 80
+
+ROPgadget --binary ciscn_2019_ne_5 --string 'sh'			# 查找字符
+
+
+
+
+
+		shellcraft
+context(arch='amd64', os='linux')
+shellcode = asm(shellcraft.sh()) + b'\x00'	# shellcraft 是 pwntools 的一个模块，包含一些生成 shellcode 的函数
+
+		# shellcraft.arm 是 ARM 架构，shellcraft.amd64 是 AMD64架构，shellcraft.i386 是 Intel 80386 架构，shellcraft.common 是通用架构。可以通过 context设置架构，然后生成 shellcode，而 	
+		# shellcraft.sh()则是生成执行 Linux 命令“/bin/sh”的 shellcode
+
+
+
+
+
+		Ropper工具查找目标语句
+python3 Ropper-master/Ropper.py --file classic --search "%rdi"
+
+命令ropper用法：	ropper			(进入ropper)
+		file ./文件		(加载文件)
+		search pop rdi		(其他：int | ret | r?x)
+		gadgets			(输出所有)
+		jmp rax			(跳转到rax的命令)
+		string sh		(查找字符串'sh')
+
+
+
+
+		getenvaddr 工具获取环境变量在栈上的地址	（https://gist.github.com/superkojiman/6a6e44db390d6dfc329a，下载后编译：gcc -o getenvaddr getenvaddr.c）
+./getenvaddr PWN ./classic
+	   环境变量   文件
