@@ -1,0 +1,53 @@
+DNS域名解析
+	A	正向解析 （域名->IP）
+	PTR	反向解析（IP->域名）
+	CNAME	记录别名（多个名字映射到一个IP）
+	MX	邮件记录（指向邮件服务器，可设置优先级，数字越小级别越高）
+	NS	域名服务器记录（指定该域名由那个DNS服务器来解析）
+
+顶级域名 子域名
+	域名的最后一个部分
+	例：www.baidu.com  顶级域名为.com  二级子域名
+
+ping
+	语法：ping baidu.com
+		测试连通性，也可查看域名对应的IP地址
+
+nslookup
+	语法：nslookup baidu.com
+		查看域名对应的IP地址
+
+dig
+	语法：dig [@DNS域名服务器] baidu.com [any]
+		any 可显示所有类型的域名记录
+	语法：dig -x IP
+		-x 参数IP反查域名
+	语法：dig txt chaos VERSION.BIND @域名服务器
+		txt 文本类型	chaos 级别信息	version 版本信息
+		查询域名服务器的版本信息
+
+https://whois.aliyun.com
+https://whois.chinaz.com
+whois(kali)
+	语法：whois baidu.com
+	查询网站的域名注册信息
+
+https://whois.chinaz.com
+https://www.tianyancha.com
+	查询备案信息
+
+挖掘子域名
+	Maltego(kali)
+	
+	Google中输入 site:qq.com
+
+	第三方网站查询
+		https://dnsdumpster.com
+		http://tool.chinaz.com/subdomain
+	证书透明度公开日志枚举
+		https://crt.sh
+		http://censys.io
+	其他途径
+		https://phpinfo.me/domain
+		http://dns.aizhan.com
+

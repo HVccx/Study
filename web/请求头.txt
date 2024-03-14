@@ -1,0 +1,56 @@
+!!!			GET			!!!
+
+
+GET /shell.php HTTP/1.1
+Host: 192.168.184.140
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.93 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Accept-Encoding: gzip, deflate
+Accept-Language: zh-CN,zh;q=0.9
+If-None-Match: "2aa6-58a84b35a8d4e-gzip"
+If-Modified-Since: Tue, 04 Jun 2019 19:43:52 GMT
+Connection: close
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!!!			POST			!!!
+
+
+POST /user.php?action=login&do=login HTTP/1.1
+Host: www.wooyun.org
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:38.0) Gecko/20100101 Firefox/38.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3
+Accept-Encoding: gzip, deflate
+Referer: http://www.wooyun.org/user.php?action=login
+Cookie: __cfduid=d473db479254a41d53bd0aae31cb7dc3b1433775400; Hm_lvt_c12f88b5c1cd041a732dea597a5ec94c=1434891316,1435283549,1435557576,1435590542; bdshare_firstime=1433775454650; wy_uid=-1; PHPSESSID=h8i10mi6rdc8l9coc708otq661; Hm_lpvt_c12f88b5c1cd041a732dea597a5ec94c=1435590574
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 65
+
+email=flag&password=ffb7567a1d4f4abdffdb54e022f8facd&captcha=BYUG
+
+
+
+
+
+
+
+
+
+
+

